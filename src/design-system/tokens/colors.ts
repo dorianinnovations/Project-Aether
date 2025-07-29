@@ -11,9 +11,9 @@ export const designTokens = {
     accent: '#B3E5FC',         // Pastel cyan
     accentSecondary: '#FFCC80', // Pastel orange
     surface: '#FEFEFE',        // Almost white (light)
-    surfaceDark: '#151515',    // Slightly darker grey surface
+    surfaceDark: '#202020',    // Dark surface for dark mode
     backgroundLight: '#FAFAFA', // Off-white background
-    backgroundDark: '#151515',  // Slightly darker grey background
+    backgroundDark: '#000000',  // Pure black background for dark mode
   },
   
   // Vibrant Soft Pastels - Perfect for icons and UI elements ✨
@@ -74,12 +74,12 @@ export const designTokens = {
       highlight: '#FFFFFF',     // Pure white highlight
       shadow: '#E0E0E0',       // Light grey shadow
     },
-    // Dark Theme Surfaces - Slightly Darker Grey
+    // Dark Theme Surfaces - Balanced Dark Mode
     dark: {
-      base: '#151515',         // Slightly darker grey base
-      elevated: '#202020',      // Slightly darker elevated
-      sunken: '#151515',       // Slightly darker grey sunken
-      highlight: '#2A2A2A',     // Dark grey highlight
+      base: '#151515',         // Dark base (good for page bg)
+      elevated: '#202020',      // Dark elevated (good for headers/buttons)
+      sunken: '#101010',       // Very dark sunken
+      highlight: '#2A2A2A',     // Medium grey highlight
       shadow: '#000000',       // Pure black shadow
     }
   },
@@ -148,9 +148,9 @@ export const designTokens = {
       surface: '#FFFFFF',
     },
     oled: {
-      primary: '#E6F3FF',      // Slightly darker grey variant
-      background: '#151515',
-      surface: '#151515',
+      primary: '#E6F3FF',      // Light baby blue for OLED
+      background: '#000000',   // Pure black for OLED
+      surface: '#000000',      // Pure black surface for OLED
     }
   }
 };

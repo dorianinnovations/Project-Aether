@@ -121,17 +121,26 @@ const BotMessageContent: React.FC<{
   return (
     <View style={styles.botTextContainer}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-        <MarkdownText style={{ 
-          ...typography.textStyles.bodyMedium, 
-          color: theme === 'dark' ? '#ffffff' : '#000000'
-        }}>
+        <MarkdownText 
+          theme={theme}
+          style={{ 
+            fontSize: 17,
+            lineHeight: 26,
+            letterSpacing: -0.2,
+            fontFamily: 'Nunito-Regular',
+            fontWeight: '400',
+            color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
+          }}
+        >
 {safeText}
         </MarkdownText>
         {isStreaming && (
           <Animated.Text style={[
             styles.streamingCursor,
             {
-              color: theme === 'dark' ? '#ffffff' : '#000000',
+              fontSize: 17,
+              fontFamily: 'Nunito-Regular',
+              color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
               opacity: cursorOpacity,
             }
           ]}>|</Animated.Text>
@@ -329,49 +338,13 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
     }
   };
 
-  const getBubbleStyles = () => {
-    if (isSystem) {
-      return [
-        getGlassmorphicStyle('card', theme as 'light' | 'dark'),
-        getStandardBorder(theme),
-        styles.systemBubble,
-        {
-          backgroundColor: designTokens.pastels.cyan + '40',
-        }
-      ];
-    }
-
-    if (isUser) {
-      return [
-        getNeumorphicStyle('elevated', theme as 'light' | 'dark'),
-        getStandardBorder(theme),
-        styles.userBubble,
-        {
-          backgroundColor: getUserMessageColor(messageIndex, theme, colorfulBubblesEnabled),
-          alignSelf: 'flex-end',
-          marginLeft: spacing[6],
-        }
-      ];
-    }
-
-    // AI bubble - include typing state
-    const isTypingMessage = message.id === 'typing';
-    const isActiveStreaming = message.isStreaming || isTypingMessage;
-    const standardBorder = getStandardBorder(theme as 'light' | 'dark');
-    
+  const getSystemBubbleStyles = () => {
     return [
-      getNeumorphicStyle(isActiveStreaming ? 'floating' : 'elevated', theme as 'light' | 'dark'),
-      standardBorder,
-      styles.aiBubble,
+      getGlassmorphicStyle('card', theme as 'light' | 'dark'),
+      getStandardBorder(theme),
+      styles.systemBubble,
       {
-        backgroundColor: themeColors.surface,
-        alignSelf: 'flex-start',
-        marginRight: spacing[6],
-        // Override border for streaming/typing with special color, otherwise use standard border
-        borderColor: isActiveStreaming ? getUserMessageColor(messageIndex, theme, colorfulBubblesEnabled) + '60' : standardBorder.borderColor,
-        shadowColor: isActiveStreaming ? getUserMessageColor(messageIndex, theme, colorfulBubblesEnabled) : undefined,
-        shadowOpacity: isActiveStreaming ? 0.4 : undefined,
-        shadowRadius: isActiveStreaming ? 6 : undefined,
+        backgroundColor: designTokens.pastels.cyan + '40',
       }
     ];
   };
@@ -403,27 +376,33 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
           <View style={styles.userMessageContainer}>
             {/* Attachments would go here */}
             
-            {/* Text Message Bubble */}
+            {/* Small Profile Bubble */}
             {message.text?.trim() && (
               <Animated.View style={[
-                getBubbleStyles() as any,
+                styles.userProfileBubble,
+                getStandardBorder(theme),
                 {
+                  backgroundColor: getUserMessageColor(messageIndex, theme, colorfulBubblesEnabled),
                   transform: [{ scale: pressAnim }],
                 }
-              ].flat()}>
-                <View style={styles.textContainer}>
-                  <Text style={[
+              ]}>
+                <Text 
+                  style={[
                     styles.messageText,
-                    typography.textStyles.bodyMedium,
                     {
-                      color: theme === 'dark' ? '#ffffff' : '#000000',
-                      letterSpacing: -0.3,
-                      lineHeight: 20,
+                      fontSize: 17,
+                      lineHeight: 24,
+                      letterSpacing: -0.2,
+                      fontFamily: 'Nunito-Regular',
+                      fontWeight: '400',
+                      color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
                     }
-                  ]}>
-                    {message.text}
-                  </Text>
-                </View>
+                  ]}
+                  numberOfLines={0}
+                  ellipsizeMode="clip"
+                >
+                  {message.text}
+                </Text>
               </Animated.View>
             )}
           </View>
@@ -470,45 +449,36 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
             {/* Main Message Content */}
             {isSystem ? (
               <Animated.View style={[
-                getBubbleStyles() as any,
+                getSystemBubbleStyles(),
                 {
                   transform: [{ scale: pressAnim }],
                 }
-              ].flat()}>
+              ]}>
                 <Text style={[
                   styles.systemMessageText,
-                  typography.textStyles.bodyMedium,
-                  { color: designTokens.brand.primary }
+                  {
+                    fontSize: 16,
+                    lineHeight: 24,
+                    letterSpacing: -0.1,
+                    fontFamily: 'Nunito-Medium',
+                    fontWeight: '500',
+                    color: designTokens.brand.primary,
+                    textAlign: 'center',
+                  }
                 ]}>
                   {message.text}
                 </Text>
               </Animated.View>
             ) : (
-              // Check if it's just the typing/loading animation
-              (message.isStreaming && !message.text?.trim()) || message.id === 'typing' ? (
-                // No bubble for typing animation - just the raw Lottie
+              // Bot messages - no bubble, just clean text
+              <View style={styles.botTextWrapper}>
                 <BotMessageContent 
                   text={message.text}
                   isStreaming={message.isStreaming}
                   theme={theme}
                   messageId={message.id}
                 />
-              ) : (
-                // Normal bubble for actual text content
-                <Animated.View style={[
-                  getBubbleStyles() as any,
-                  {
-                    transform: [{ scale: pressAnim }],
-                  }
-                ].flat()}>
-                  <BotMessageContent 
-                    text={message.text}
-                    isStreaming={message.isStreaming}
-                    theme={theme}
-                    messageId={message.id}
-                  />
-                </Animated.View>
-              )
+              </View>
             )}
             
             {/* AI Insight Section */}
@@ -585,38 +555,36 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing[1],
-    marginHorizontal: spacing[1] / 2,
+    marginVertical: spacing[1] / 4,
+    marginHorizontal: 0,
+    overflow: 'visible',
   },
   userContainer: {
     alignItems: 'flex-end',
-    paddingRight: spacing[2],
   },
   aiContainer: {
     alignItems: 'flex-start',
-    paddingLeft: spacing[2], 
   },
   messageWrapper: {
     maxWidth: width * 0.95,
   },
   userMessageWrapper: {
-    maxWidth: width * 0.92,
+    width: '100%',
   },
   userMessageContainer: {
     alignItems: 'flex-end',
-    gap: spacing[1],
-    marginRight: spacing[1],
+    gap: spacing[1] / 4,
+    width: '100%',
+    overflow: 'visible',
   },
   botMessageContainer: {
     width: '100%',
     paddingHorizontal: spacing[1] / 2,
-    paddingVertical: spacing[1],
     position: 'relative',
   },
   botTextContainer: {
     width: '100%',
     position: 'relative',
-    paddingVertical: 2,
   },
   lottieAnimation: {
     width: 100,
@@ -624,30 +592,33 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginLeft: -8,
   },
-  userBubble: {
-    borderRadius: borderRadius.lg,
-    borderBottomRightRadius: borderRadius.sm,
-    paddingHorizontal: spacing[4] * 0.7,
-    paddingVertical: spacing[3] * 0.7,
+  userProfileBubble: {
+    borderRadius: 12,
+    paddingHorizontal: spacing[2] + 2,
+    paddingVertical: spacing[1] + 2,
     marginVertical: spacing[1] / 2,
     maxWidth: '92%',
-    minWidth: 60,
+    minWidth: 50,
+    alignSelf: 'flex-end',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    overflow: 'visible',
   },
-  aiBubble: {
-    borderRadius: borderRadius.lg,
-    borderBottomLeftRadius: borderRadius.sm,
-    paddingHorizontal: spacing[4] * 0.7,
-    paddingVertical: spacing[3] * 0.7,
+  botTextWrapper: {
     marginVertical: spacing[1] / 2,
-    maxWidth: '92%',
-    minWidth: 60,
+    paddingHorizontal: spacing[1] / 2,
+    maxWidth: '95%',
+    alignSelf: 'flex-start',
   },
   systemBubble: {
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing[4] * 0.7,
-    paddingVertical: spacing[3] * 0.7,
-    marginVertical: spacing[1] / 2,
-    marginHorizontal: spacing[8],
+    borderRadius: 16,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    marginVertical: spacing[1],
+    marginHorizontal: spacing[6],
     alignSelf: 'center',
   },
   textContainer: {
@@ -656,23 +627,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageText: {
-    fontWeight: '400',
+    // Typography now handled inline for better control
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    width: '100%',
+    overflow: 'visible',
   },
   systemMessageText: {
-    textAlign: 'center',
+    // Typography now handled inline for better control
   },
   streamingCursor: {
-    opacity: 0.7,
-    fontWeight: 'bold',
+    opacity: 0.8,
+    fontWeight: '500',
+    marginLeft: 1,
   },
   userTimestamp: {
     textAlign: 'right',
-    marginTop: spacing[1] / 2,
+    marginTop: spacing[1] / 4,
   },
   aiMessageTimestamp: {
     alignSelf: 'flex-start',
-    marginTop: spacing[2],
-    marginLeft: spacing[1] / 2,
+    marginTop: spacing[1],
+    marginLeft: spacing[1] / 4,
     opacity: 0.6,
   },
 

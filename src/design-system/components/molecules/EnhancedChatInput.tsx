@@ -326,9 +326,18 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
         {
           borderColor: themeColors.borders.default,
           borderWidth: 1,
-          borderBottomWidth: attachmentButtonsVisible ? 0 : 1,
-          borderBottomLeftRadius: attachmentButtonsVisible ? 0 : 16,
-          borderBottomRightRadius: attachmentButtonsVisible ? 0 : 16,
+          borderBottomWidth: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 0],
+          }),
+          borderBottomLeftRadius: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [16, 0],
+          }),
+          borderBottomRightRadius: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [16, 0],
+          }),
         }
       ]}>
         <View style={styles.inputRow}>
@@ -435,7 +444,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                   <FontAwesome5
                     name={hasImageOnlyMessage ? "eye" : "arrow-up"}
                     size={18}
-                    color={canSend ? '#ffffff' : themeColors.textMuted}
+                    color={canSend ? '#1DA1F2' : themeColors.textMuted}
                   />
                 )}
               </Animated.View>
@@ -613,8 +622,8 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing[2],
+    alignItems: 'center',
+    gap: spacing[1],
     position: 'relative',
   },
   inputContainer: {
@@ -632,8 +641,11 @@ const styles = StyleSheet.create({
     minHeight: 44,
     maxHeight: 44,
     paddingVertical: 1,
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 24,
     letterSpacing: -0.2,
+    fontFamily: 'Nunito-Regular',
+    fontWeight: '400',
   },
   attachmentToggleButton: {
     width: 40,
@@ -642,22 +654,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   voiceButton: {
-    marginBottom: 2,
+    // Remove marginBottom for alignment
   },
   voiceButtonInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonContainer: {
-    marginBottom: 2,
+    // Remove marginBottom for alignment
   },
   sendButton: {
-    width: 65,
-    height: 43,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing[1],

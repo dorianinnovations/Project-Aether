@@ -612,7 +612,6 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       {/* Enhanced Header */}
       <Header
         title="Numina"
-        subtitle={isLoading ? 'Thinking...' : `${messages.length - 1} messages`}
         showMenuButton={true}
         showConversationsButton={true}
         onMenuPress={toggleHeaderMenu}
@@ -723,7 +722,7 @@ const styles = StyleSheet.create({
   // Messages
   messagesList: {
     flex: 1,
-    paddingHorizontal: spacing[1],
+    paddingHorizontal: spacing[3],
     zIndex: 1, // Ensure messages appear above background but below header
   },
   messagesContent: {

@@ -31,39 +31,39 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
   const dreamyGradientColors = ['#ffffff', '#f2f8ff', '#e2f0ff', '#eaf4ff', '#f4faff'];
   
   // Consistent dark grey background
-  const darkGrey = '#1A1A1A';
+  const darkGrey = '#0F0F0F';
 
   const getGradientColors = (): string[] => {
     switch (variant) {
       case 'hero':
         return theme === 'light' 
           ? ['#C6D2FF', '#A4F4CF', '#FEE685'] // Soft Blue-Green-Yellow from numina
-          : [darkGrey, '#2A2A2A', darkGrey];
+          : [darkGrey, '#1A1A1A', darkGrey];
       
       case 'auth':
         return theme === 'light'
           ? dreamyGradientColors
-          : [darkGrey, '#2A2A2A', darkGrey];
+          : [darkGrey, '#1A1A1A', darkGrey];
       
       case 'profile':
         return theme === 'light'
           ? ['#f5f3ff', '#faf9ff', '#f5f3ff'] // Cosmic light
-          : [darkGrey, '#2A2A2A', darkGrey]; // Consistent dark
+          : [darkGrey, '#1A1A1A', darkGrey]; // Consistent dark
       
       case 'chat':
         return theme === 'light'
           ? dreamyGradientColors
-          : [darkGrey, '#2A2A2A', darkGrey];
+          : [darkGrey, '#1A1A1A', darkGrey];
       
       case 'connections':
         return theme === 'light'
           ? ['#e0f2fe', '#f0f9ff', '#e0f2fe'] // Ocean light
-          : [darkGrey, '#2A2A2A', darkGrey]; // Consistent dark
+          : [darkGrey, '#1A1A1A', darkGrey]; // Consistent dark
       
       default:
         return theme === 'light' 
           ? dreamyGradientColors 
-          : [darkGrey, '#2A2A2A', darkGrey];
+          : [darkGrey, '#1A1A1A', darkGrey];
     }
   };
 

@@ -263,11 +263,11 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
 
   const getVariantColor = () => {
     switch (variant) {
-      case 'danger': return designTokens.semantic.error;
+      case 'danger': return theme === 'dark' ? '#FF5252' : '#DC2626'; // Bright red for dark, strong red for light
       case 'warning': return designTokens.semantic.warning;
       case 'info': return designTokens.brand.primary;
       case 'success': return designTokens.semantic.success;
-      default: return designTokens.semantic.error;
+      default: return theme === 'dark' ? '#FF5252' : '#DC2626';
     }
   };
 
@@ -330,7 +330,9 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             styles.background,
             {
               opacity: backgroundOpacity,
-              backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+              backgroundColor: variant === 'danger' 
+                ? (theme === 'dark' ? 'rgba(20, 0, 0, 0.8)' : 'rgba(40, 10, 10, 0.6)')
+                : (theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)'),
             }
           ]}
         >
@@ -386,6 +388,8 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                 getNeumorphicStyle('subtle', theme),
                 {
                   backgroundColor: themeColors.surface,
+                  borderWidth: 2,
+                  borderColor: theme === 'dark' ? '#404040' : '#E5E5E5',
                   transform: [{ scale: cancelButtonScale }],
                 }
               ]}>
@@ -397,7 +401,10 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                   <Text style={[
                     styles.buttonText,
                     typography.textStyles.bodyMedium,
-                    { color: themeColors.text }
+                    { 
+                      color: themeColors.text,
+                      fontWeight: '600',
+                    }
                   ]}>
                     {cancelText}
                   </Text>
@@ -411,6 +418,13 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                 getNeumorphicStyle('elevated', theme),
                 {
                   backgroundColor: getVariantColor(),
+                  borderWidth: 2,
+                  borderColor: theme === 'dark' ? '#FF6B6B' : '#B91C1C',
+                  shadowColor: getVariantColor(),
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
                   transform: [{ scale: confirmButtonScale }],
                 }
               ]}>
@@ -423,7 +437,13 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                     styles.buttonText,
                     styles.confirmButtonText,
                     typography.textStyles.bodyMedium,
-                    { color: '#ffffff' }
+                    { 
+                      color: '#ffffff',
+                      fontWeight: '700',
+                      textShadowColor: 'rgba(0,0,0,0.3)',
+                      textShadowOffset: { width: 0, height: 1 },
+                      textShadowRadius: 2,
+                    }
                   ]}>
                     {confirmText}
                   </Text>

@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  Image,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { designTokens, getThemeColors, getStandardBorder } from '../../tokens/co
 import { typography } from '../../tokens/typography';
 import { spacing } from '../../tokens/spacing';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
+import { getNeumorphicStyle } from '../../tokens/shadows';
 import { AnimatedHamburger } from '../atoms/AnimatedHamburger';
 
 interface HeaderProps {
@@ -199,13 +201,23 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={!onTitlePress}
           >
             <View style={styles.titleRow}>
-              <Text style={[
-                styles.title,
-                typography.textStyles.headlineMedium,
-                { color: themeColors.text }
-              ]}>
-                {title}
-              </Text>
+              <View style={styles.titleWithCloudContainer}>
+                {/* Cloud icon positioned behind and offset to the left */}
+                <Image
+                  source={require('../../../../assets/icon.png')}
+                  style={[
+                    styles.backgroundCloudIcon,
+                    {
+                      shadowColor: theme === 'dark' ? '#000000' : '#666666',
+                      shadowOffset: { width: 0, height: theme === 'dark' ? 8 : 4 },
+                      shadowOpacity: theme === 'dark' ? 0.25 : 0.4,
+                      shadowRadius: theme === 'dark' ? 12 : 8,
+                      elevation: theme === 'dark' ? 16 : 12,
+                    }
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
               {isActive && (
                 <LottieView
                   source={require('../../../../assets/GreenActiveIndicatorLottie.json')}
@@ -300,18 +312,51 @@ const styles = StyleSheet.create({
   },
   leftSection: {
     flex: 1,
+    overflow: 'visible',
   },
   titleContainer: {
     alignItems: 'flex-start',
+    overflow: 'visible',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
+    overflow: 'visible',
   },
   title: {
     fontWeight: '700',
     letterSpacing: -0.5,
+  },
+  titleWithCloudContainer: {
+    position: 'relative',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    width: 200,
+    height: 30,
+    paddingLeft: 15,
+    paddingRight: 30,
+    overflow: 'visible',
+  },
+  backgroundCloudIcon: {
+    position: 'absolute',
+    left: 0,
+    top: -8,
+    width: 65,
+    height: 50,
+    opacity: 1,
+    zIndex: 0,
+  },
+  titleWithCloudBehind: {
+    position: 'relative',
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    fontSize: 24,
+    fontFamily: 'Nunito-Bold',
+    zIndex: 2,
+    textAlign: 'left',
+    marginTop: 0,
+    paddingLeft: 8,
   },
   activeIndicator: {
     width: 22,
