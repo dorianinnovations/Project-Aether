@@ -159,10 +159,10 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
       ];
     } else {
       return [
-        '#f8fafc', // Light gray-blue
-        '#e2e8f0', // Soft blue-gray
-        '#cbd5e1', // Medium blue-gray
-        '#f1f5f9', // Very light blue
+        '#f0f6ff', // Light blue-tinted white
+        '#dbeafe', // Soft sky blue
+        '#bfdbfe', // Medium sky blue
+        '#e0f2fe', // Very light cyan-blue
       ];
     }
   };
@@ -219,7 +219,7 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               style={[
                 styles.brandText,
                 { 
-                  color: colors.text,
+                  color: theme === 'dark' ? '#e5e5e5' : '#2d3748',
                   opacity: brandOpacity,
                 }
               ]}

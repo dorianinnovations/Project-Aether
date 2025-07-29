@@ -85,7 +85,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
 
   // Header menu hook
-  const { showHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
+  const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
     screenName: 'chat',
     onSettingsPress: () => setShowSettings(true),
     onSignOut: () => setShowSignOutModal(true)
@@ -188,15 +188,37 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
       // Real SSE streaming - as fast as server sends!
       let accumulatedText = '';
+      let hasReceivedData = false;
       
-      for await (const chunk of ChatAPI.streamMessage(messageText)) {
-        accumulatedText += chunk;
-        
-        setMessages(prev => prev.map(msg => 
-          msg.id === streamingMsg.id 
-            ? { ...msg, message: accumulatedText }
-            : msg
-        ));
+      try {
+        for await (const chunk of ChatAPI.streamMessage(messageText)) {
+          hasReceivedData = true;
+          accumulatedText += chunk;
+          
+          setMessages(prev => prev.map(msg => 
+            msg.id === streamingMsg.id 
+              ? { ...msg, message: accumulatedText }
+              : msg
+          ));
+        }
+      } catch (streamError) {
+        // If streaming failed and we haven't received any data, try non-streaming
+        if (!hasReceivedData) {
+          try {
+            const fallbackResponse = await ChatAPI.sendMessage(messageText, false);
+            accumulatedText = fallbackResponse.content;
+            
+            setMessages(prev => prev.map(msg => 
+              msg.id === streamingMsg.id 
+                ? { ...msg, message: accumulatedText }
+                : msg
+            ));
+          } catch (fallbackError) {
+            throw streamError; // Re-throw original streaming error
+          }
+        } else {
+          throw streamError; // Re-throw if we had partial streaming data
+        }
       }
 
       // Mark as complete
@@ -405,6 +427,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       metadata: item.metadata,
     };
 
+
     return (
       <EnhancedMessageBubble
         key={item.id}
@@ -603,7 +626,11 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       {/* Header Menu */}
       <HeaderMenu
         visible={showHeaderMenu}
-        onClose={() => {}}
+        onClose={() => {
+          if (setShowHeaderMenu) {
+            setShowHeaderMenu(false);
+          }
+        }}
         onAction={handleMenuAction}
         showAuthOptions={true}
       />

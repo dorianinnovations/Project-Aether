@@ -86,7 +86,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
   const navigation = useNavigation();
   
   // Header menu hook
-  const { showHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
+  const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
     screenName: 'insights',
     onSignOut: () => setShowSignOutModal(true)
   });
@@ -355,7 +355,11 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
       {/* Header Menu */}
       <HeaderMenu
         visible={showHeaderMenu}
-        onClose={() => {}}
+        onClose={() => {
+          if (setShowHeaderMenu) {
+            setShowHeaderMenu(false);
+          }
+        }}
         onAction={handleMenuAction}
         showAuthOptions={false}
       />

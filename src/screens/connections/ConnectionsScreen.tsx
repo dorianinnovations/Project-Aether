@@ -85,7 +85,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
   const navigation = useNavigation();
   
   // Header menu hook
-  const { showHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
+  const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
     screenName: 'connections',
     onSignOut: () => setShowSignOutModal(true)
   });
@@ -390,7 +390,11 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       {/* Header Menu */}
       <HeaderMenu
         visible={showHeaderMenu}
-        onClose={() => {}}
+        onClose={() => {
+          if (setShowHeaderMenu) {
+            setShowHeaderMenu(false);
+          }
+        }}
         onAction={handleMenuAction}
         showAuthOptions={false}
       />

@@ -109,28 +109,29 @@ const BotMessageContent: React.FC<{
   const isTypingMessage = messageId === 'typing';
   if ((isStreaming && !safeText.trim()) || isTypingMessage) {
     return (
-      <View style={styles.botTextContainer}>
-        <LottieView
-          source={require('../../../../assets/BotMessageLottie.json')}
-          autoPlay
-          loop
-          style={styles.lottieAnimation}
-        />
-      </View>
+      <LottieView
+        source={require('../../../../assets/CPUProcessorLottie.json')}
+        autoPlay
+        loop
+        style={styles.lottieAnimation}
+      />
     );
   }
   
   return (
     <View style={styles.botTextContainer}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-        <MarkdownText style={{ ...typography.textStyles.bodyMedium, color: themeColors.text }}>
+        <MarkdownText style={{ 
+          ...typography.textStyles.bodyMedium, 
+          color: theme === 'dark' ? '#ffffff' : '#000000'
+        }}>
 {safeText}
         </MarkdownText>
         {isStreaming && (
           <Animated.Text style={[
             styles.streamingCursor,
             {
-              color: themeColors.text,
+              color: theme === 'dark' ? '#ffffff' : '#000000',
               opacity: cursorOpacity,
             }
           ]}>|</Animated.Text>
@@ -415,7 +416,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
                     styles.messageText,
                     typography.textStyles.bodyMedium,
                     {
-                      color: '#ffffff',
+                      color: theme === 'dark' ? '#ffffff' : '#000000',
                       letterSpacing: -0.3,
                       lineHeight: 20,
                     }
@@ -483,19 +484,31 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
                 </Text>
               </Animated.View>
             ) : (
-              <Animated.View style={[
-                getBubbleStyles() as any,
-                {
-                  transform: [{ scale: pressAnim }],
-                }
-              ].flat()}>
+              // Check if it's just the typing/loading animation
+              (message.isStreaming && !message.text?.trim()) || message.id === 'typing' ? (
+                // No bubble for typing animation - just the raw Lottie
                 <BotMessageContent 
                   text={message.text}
                   isStreaming={message.isStreaming}
                   theme={theme}
                   messageId={message.id}
                 />
-              </Animated.View>
+              ) : (
+                // Normal bubble for actual text content
+                <Animated.View style={[
+                  getBubbleStyles() as any,
+                  {
+                    transform: [{ scale: pressAnim }],
+                  }
+                ].flat()}>
+                  <BotMessageContent 
+                    text={message.text}
+                    isStreaming={message.isStreaming}
+                    theme={theme}
+                    messageId={message.id}
+                  />
+                </Animated.View>
+              )
             )}
             
             {/* AI Insight Section */}
@@ -603,12 +616,13 @@ const styles = StyleSheet.create({
   botTextContainer: {
     width: '100%',
     position: 'relative',
-    paddingVertical: spacing[1] / 2,
+    paddingVertical: 2,
   },
   lottieAnimation: {
-    width: 60,
-    height: 40,
-    alignSelf: 'center',
+    width: 100,
+    height: 96,
+    alignSelf: 'flex-start',
+    marginLeft: -8,
   },
   userBubble: {
     borderRadius: borderRadius.lg,

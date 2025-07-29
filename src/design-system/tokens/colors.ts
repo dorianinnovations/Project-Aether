@@ -273,47 +273,49 @@ export const getUserMessageColor = (messageIndex: number, theme: 'light' | 'dark
   return getCyclingPastelColor(messageIndex, theme);
 };
 
-// Soft Pastel Icon Color System
+// Bright Rainbow Pastel Icon Color System
 export const iconColors = {
-  // Menu icons with soft pastels
-  home: designTokens.pastels.blue,        // Very soft sky blue
-  chat: designTokens.pastels.green,       // Very soft mint green  
-  profile: designTokens.pastels.purple,   // Very soft lavender
-  connections: designTokens.pastels.coral, // Very soft coral
-  insights: designTokens.pastels.cyan,    // Very soft cyan
-  settings: designTokens.pastels.sage,    // Very soft sage
-  help: designTokens.pastels.yellow,      // Very soft butter yellow
-  notifications: designTokens.pastels.rose, // Very soft rose
-  search: designTokens.pastels.mint,      // Very soft mint
-  menu: designTokens.pastels.cream,       // Very soft cream
-  back: designTokens.pastels.pink,        // Very soft pink
-  close: designTokens.pastels.orange,     // Very soft peach
+  // Menu icons with bright rainbow pastels
+  home: '#4FB3D9',        // Bright sky blue
+  chat: '#5FD068',        // Bright mint green  
+  profile: '#B84FC7',     // Bright purple
+  connections: '#FF7A85', // Bright coral
+  insights: '#42E8DB',    // Bright cyan
+  settings: '#95D982',    // Bright sage green
+  help: '#FFD54F',        // Bright sunny yellow
+  notifications: '#FF8A95', // Bright rose
+  search: '#7FDBCA',      // Bright mint
+  menu: '#FFA726',        // Bright orange
+  back: '#F48FB1',        // Bright pink
+  close: '#FF8A65',       // Bright peach
+  signout: '#FF5252',     // Bright red for sign out action
 };
 
 
 // Get soft pastel color for any icon by name
 export const getIconColor = (iconName: keyof typeof iconColors, theme: 'light' | 'dark' = 'light'): string => {
-  const baseColor = iconColors[iconName] || designTokens.pastels.blue;
+  const baseColor = iconColors[iconName] || '#4FB3D9';
   
-  // In dark mode, use much more vibrant versions
+  // In dark mode, use even more vibrant versions
   if (theme === 'dark') {
-    // Map light pastels to vibrant dark mode versions
+    // Map bright icons to extra vibrant dark mode versions
     const colorMapping: Record<string, string> = {
-      [designTokens.pastels.pink]: darkModePastels.pink,
-      [designTokens.pastels.cyan]: darkModePastels.cyan,
-      [designTokens.pastels.orange]: darkModePastels.orange,
-      [designTokens.pastels.purple]: darkModePastels.purple,
-      [designTokens.pastels.green]: darkModePastels.green,
-      [designTokens.pastels.yellow]: darkModePastels.yellow,
-      [designTokens.pastels.coral]: darkModePastels.coral,
-      [designTokens.pastels.mint]: darkModePastels.mint,
-      [designTokens.pastels.blue]: darkModePastels.blue,
-      [designTokens.pastels.rose]: darkModePastels.rose,
-      [designTokens.pastels.sage]: darkModePastels.sage,
-      [designTokens.pastels.cream]: darkModePastels.cream,
+      '#4FB3D9': '#5CC7E8',    // Even brighter sky blue
+      '#5FD068': '#6AE86F',    // Even brighter mint green
+      '#B84FC7': '#C95FD6',    // Even brighter purple
+      '#FF7A85': '#FF8A95',    // Even brighter coral
+      '#42E8DB': '#4EF5E6',    // Even brighter cyan
+      '#95D982': '#A5E690',    // Even brighter sage
+      '#FFD54F': '#FFE066',    // Even brighter yellow
+      '#FF8A95': '#FFA0AB',    // Even brighter rose
+      '#7FDBCA': '#8FE8D7',    // Even brighter mint
+      '#FFA726': '#FFB74D',    // Even brighter orange
+      '#F48FB1': '#FF9FC7',    // Even brighter pink
+      '#FF8A65': '#FF9A7A',    // Even brighter peach
+      '#FF5252': '#FF6B6B',    // Even brighter red for sign out
     };
     
-    return colorMapping[baseColor] || darkModePastels.blue;
+    return colorMapping[baseColor] || '#5CC7E8';
   }
   
   return baseColor;

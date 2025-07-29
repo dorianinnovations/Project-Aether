@@ -1,0 +1,204 @@
+import React from 'react';
+import { render, RenderOptions } from '@testing-library/react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { ThemeProvider } from '../contexts/ThemeContext';
+import { SettingsProvider } from '../contexts/SettingsContext';
+
+// Test providers wrapper
+const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <SettingsProvider>
+      <ThemeProvider>
+        <NavigationContainer>
+          {children}
+        </NavigationContainer>
+      </ThemeProvider>
+    </SettingsProvider>
+  );
+};
+
+// Custom render function
+const customRender = (
+  ui: React.ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>
+) => render(ui, { wrapper: AllTheProviders, ...options });
+
+// Re-export everything
+export * from '@testing-library/react-native';
+
+// Override render method
+export { customRender as render };
+
+// Test utilities for user interactions
+export const testUtils = {
+  // Simulate user typing with realistic delays
+  async typeText(textInput: any, text: string, delay = 50) {
+    for (let i = 0; i < text.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      textInput.changeText(text.slice(0, i + 1));
+    }
+  },
+
+  // Simulate form submission
+  async submitForm(submitButton: any) {
+    submitButton.press();
+    // Allow for async operations
+    await new Promise(resolve => setTimeout(resolve, 100));
+  },
+
+  // Wait for animations
+  async waitForAnimations(duration = 1000) {
+    jest.advanceTimersByTime(duration);
+    await new Promise(resolve => setTimeout(resolve, 10));
+  },
+
+  // Mock navigation functions
+  createMockNavigation() {
+    return {
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      canGoBack: jest.fn(() => true),
+      replace: jest.fn(),
+      reset: jest.fn(),
+      dispatch: jest.fn(),
+      isFocused: jest.fn(() => true),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    };
+  },
+
+  // Mock route
+  createMockRoute(params = {}) {
+    return {
+      key: 'test-route',
+      name: 'TestScreen',
+      params,
+    };
+  },
+};
+
+// Metrics tracking utilities
+export const metricsUtils = {
+  // Track user journey metrics
+  trackUserJourneyStep(step: string, data?: any) {
+    const timestamp = Date.now();
+    const metric = {
+      step,
+      timestamp,
+      data,
+    };
+    
+    // In tests, we can validate these metrics
+    if (global.__TEST_METRICS__) {
+      global.__TEST_METRICS__.push(metric);
+    }
+    
+    return metric;
+  },
+
+  // Get tracked metrics for testing
+  getTrackedMetrics() {
+    return global.__TEST_METRICS__ || [];
+  },
+
+  // Clear metrics
+  clearMetrics() {
+    global.__TEST_METRICS__ = [];
+  },
+
+  // Validate user journey
+  validateUserJourney(expectedSteps: string[]) {
+    const metrics = metricsUtils.getTrackedMetrics();
+    const actualSteps = metrics.map((m: any) => m.step);
+    
+    return {
+      passed: JSON.stringify(expectedSteps) === JSON.stringify(actualSteps),
+      expected: expectedSteps,
+      actual: actualSteps,
+      metrics,
+    };
+  },
+};
+
+// Mock API responses
+export const mockAPI = {
+  auth: {
+    login: jest.fn(),
+    signup: jest.fn(),
+    logout: jest.fn(),
+  },
+  
+  // Success responses
+  loginSuccess: () => mockAPI.auth.login.mockResolvedValue({ token: 'test-token', user: { id: '1', email: 'test@example.com' } }),
+  signupSuccess: () => mockAPI.auth.signup.mockResolvedValue({ token: 'test-token', user: { id: '1', email: 'test@example.com' } }),
+  
+  // Error responses
+  loginError: (message = 'Invalid credentials') => mockAPI.auth.login.mockRejectedValue(new Error(message)),
+  signupError: (message = 'Account creation failed') => mockAPI.auth.signup.mockRejectedValue(new Error(message)),
+  
+  // Reset all mocks
+  reset: () => {
+    Object.values(mockAPI.auth).forEach(mock => {
+      if (jest.isMockFunction(mock)) {
+        mock.mockReset();
+      }
+    });
+  },
+};
+
+// User journey test helpers
+export const userJourneyHelpers = {
+  // Complete app initialization
+  async completeAppInitialization() {
+    metricsUtils.trackUserJourneyStep('app_start');
+    jest.advanceTimersByTime(1000); // Simulate font loading
+    metricsUtils.trackUserJourneyStep('fonts_loaded');
+    await testUtils.waitForAnimations(1000);
+    metricsUtils.trackUserJourneyStep('app_ready');
+  },
+
+  // Complete sign up flow
+  async completeSignUpFlow(screen: any, credentials = { email: 'test@example.com', password: 'TestPass123!' }) {
+    metricsUtils.trackUserJourneyStep('signup_start');
+    
+    const emailInput = screen.getByPlaceholderText('Email');
+    const passwordInput = screen.getByPlaceholderText('Password');
+    const confirmPasswordInput = screen.getByPlaceholderText('Confirm Password');
+    const submitButton = screen.getByText('Create Account');
+
+    await testUtils.typeText(emailInput, credentials.email);
+    metricsUtils.trackUserJourneyStep('signup_email_entered');
+    
+    await testUtils.typeText(passwordInput, credentials.password);
+    metricsUtils.trackUserJourneyStep('signup_password_entered');
+    
+    await testUtils.typeText(confirmPasswordInput, credentials.password);
+    metricsUtils.trackUserJourneyStep('signup_confirm_password_entered');
+    
+    await testUtils.submitForm(submitButton);
+    metricsUtils.trackUserJourneyStep('signup_form_submitted');
+  },
+
+  // Complete sign in flow
+  async completeSignInFlow(screen: any, credentials = { email: 'test@example.com', password: 'TestPass123!' }) {
+    metricsUtils.trackUserJourneyStep('signin_start');
+    
+    const emailInput = screen.getByPlaceholderText('Email');
+    const passwordInput = screen.getByPlaceholderText('Password');
+    const submitButton = screen.getByText('Sign In');
+
+    await testUtils.typeText(emailInput, credentials.email);
+    metricsUtils.trackUserJourneyStep('signin_email_entered');
+    
+    await testUtils.typeText(passwordInput, credentials.password);
+    metricsUtils.trackUserJourneyStep('signin_password_entered');
+    
+    await testUtils.submitForm(submitButton);
+    metricsUtils.trackUserJourneyStep('signin_form_submitted');
+  },
+};
+
+// Declare global types for TypeScript
+declare global {
+  var __TEST_METRICS__: any[];
+}

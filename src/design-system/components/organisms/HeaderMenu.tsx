@@ -11,7 +11,8 @@ import {
   StyleSheet, 
   Animated, 
   Dimensions, 
-  Easing 
+  Easing,
+  Modal 
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -70,7 +71,7 @@ const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
     requiresAuth: false 
   },
   { 
-    icon: <Feather name="log-out" size={16} color={getIconColor('menu', theme)} />, 
+    icon: <Feather name="log-out" size={16} color={getIconColor('signout', theme)} />, 
     label: 'Sign Out', 
     key: 'sign_out', 
     requiresAuth: true,
@@ -162,20 +163,20 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     Animated.parallel([
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 140,
-        easing: Easing.out(Easing.quad),
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 1,
-        duration: 140,
-        easing: Easing.out(Easing.quad),
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(translateYAnim, {
         toValue: 0,
-        duration: 140,
-        easing: Easing.out(Easing.quad),
+        duration: 180,
+        easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -235,27 +236,28 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     Animated.parallel([
       Animated.timing(scaleAnim, {
         toValue: 0.9,
-        duration: 100,
-        easing: Easing.in(Easing.quad),
+        duration: 80,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 100,
-        easing: Easing.in(Easing.quad),
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(translateYAnim, {
         toValue: -8,
-        duration: 100,
-        easing: Easing.in(Easing.quad),
+        duration: 120,
+        easing: Easing.bezier(0.55, 0.06, 0.68, 0.19),
         useNativeDriver: true,
       }),
-      // Hide all items instantly
+      // Hide all items smoothly
       ...itemAnims.map(anim => 
         Animated.timing(anim.opacity, {
           toValue: 0,
-          duration: 80,
+          duration: 200,
+          easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         })
       ),
@@ -347,45 +349,52 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   const menuTop = topMargin + 50;
 
   return (
-    <View style={styles.overlay}>
-      {/* Background overlay that handles dismissal */}
-      <TouchableOpacity 
-        style={styles.backgroundOverlay}
-        activeOpacity={1} 
-        onPress={onClose}
-        disabled={isAnimating}
-      >
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="none"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        {/* Background overlay that handles dismissal */}
+        <TouchableOpacity 
+          style={styles.backgroundOverlay}
+          activeOpacity={1} 
+          onPress={onClose}
+          disabled={isAnimating}
+        >
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                opacity: opacityAnim,
+                backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+              }
+            ]}
+          />
+        </TouchableOpacity>
+        
+        {/* Menu container positioned above overlay */}
         <Animated.View
           style={[
-            StyleSheet.absoluteFillObject,
+            styles.menuContainer,
             {
+              backgroundColor: theme === 'light' ? designTokens.brand.surface : designTokens.brand.surfaceDark,
+              borderWidth: 1,
+              borderColor: theme === 'light' ? designTokens.borders.light.default : designTokens.borders.dark.default,
+              ...getHeaderMenuShadow(theme),
+              position: 'absolute',
+              top: menuTop,
+              right: menuRight,
+              width: menuWidth,
               opacity: opacityAnim,
-              backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+              transform: [
+                { scale: scaleAnim },
+                { translateY: translateYAnim }
+              ],
             }
           ]}
-        />
-      </TouchableOpacity>
-      
-      <Animated.View
-        style={[
-          styles.menuContainer,
-          {
-            backgroundColor: theme === 'light' ? designTokens.brand.surface : designTokens.brand.surfaceDark,
-            borderWidth: 1,
-            borderColor: theme === 'light' ? designTokens.borders.light.default : designTokens.borders.dark.default,
-            ...getHeaderMenuShadow(theme),
-            position: 'absolute',
-            top: menuTop,
-            right: menuRight,
-            width: menuWidth,
-            opacity: opacityAnim,
-            transform: [
-              { scale: scaleAnim },
-              { translateY: translateYAnim }
-            ],
-          }
-        ]}
-      >
+        >
         {/* Arrow pointing to menu button */}
         <View style={[
           styles.arrow,
@@ -435,19 +444,15 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
             </Animated.View>
           ))}
         </View>
-      </Animated.View>
-    </View>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
+    flex: 1,
   },
   backgroundOverlay: {
     position: 'absolute',
@@ -455,13 +460,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 999,
   },
   menuContainer: {
     borderRadius: 16,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[2],
-    zIndex: 1001,
     overflow: 'visible',
   },
   arrow: {

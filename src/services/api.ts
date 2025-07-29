@@ -183,7 +183,7 @@ export const AuthAPI = {
 // Chat API
 export const ChatAPI = {
   async sendMessage(prompt: string, stream: boolean = false): Promise<ChatResponse> {
-    const response = await api.post<ChatResponse>('/adaptive-chat', {
+    const response = await api.post<ChatResponse>('/ai/adaptive-chat', {
       prompt,
       stream,
     });
@@ -192,7 +192,7 @@ export const ChatAPI = {
   },
 
   async sendAdaptiveMessage(message: string, stream: boolean = false): Promise<ChatResponse> {
-    const response = await api.post<ChatResponse>('/personalizedAI/contextual-chat', {
+    const response = await api.post<ChatResponse>('/personalized-ai/contextual-chat', {
       message,
       stream,
     });
@@ -200,91 +200,23 @@ export const ChatAPI = {
     return response.data;
   },
 
-  // SSE Streaming implementation
-  async *streamMessage(prompt: string, endpoint: string = '/adaptive-chat'): AsyncGenerator<string, void, unknown> {
-    console.log(`🌊 Starting SSE stream to ${endpoint} with prompt:`, prompt.substring(0, 50) + '...');
-    const token = await TokenManager.getToken();
-    const controller = new AbortController();
-    
+  // Clean streaming implementation optimized for React Native
+  async *streamMessage(prompt: string, endpoint: string = '/ai/adaptive-chat'): AsyncGenerator<string, void, unknown> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          prompt,
-          stream: true,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // If not JSON, use the raw text or default message
-          errorMessage = errorText || errorMessage;
-        }
-        
-        throw new Error(errorMessage);
+      // Use the clean streaming service
+      const { ChatStreaming } = await import('./cleanStreaming');
+      
+      for await (const chunk of ChatStreaming.streamMessage(prompt, endpoint)) {
+        yield chunk;
       }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('Failed to get response reader');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            
-            if (data === '[DONE]') {
-              return;
-            }
-            
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                console.log(`📝 SSE chunk received:`, parsed.content.length, 'chars');
-                yield parsed.content;
-              }
-            } catch (e) {
-              // Skip malformed JSON
-              console.warn('Skipped malformed SSE data:', data);
-            }
-          }
-        }
-      }
+      
     } catch (error) {
-      console.error('SSE streaming error:', error);
       throw error;
     }
   },
 
   async *streamAdaptiveMessage(message: string): AsyncGenerator<string, void, unknown> {
-    yield* this.streamMessage(message, '/personalizedAI/contextual-chat');
+    yield* this.streamMessage(message, '/personalized-ai/contextual-chat');
   },
 };
 
@@ -314,12 +246,12 @@ export const UserAPI = {
 // Analytics API
 export const AnalyticsAPI = {
   async getPersonalInsights(): Promise<any> {
-    const response = await api.get('/personalInsights/growth-summary');
+    const response = await api.get('/personal-insights/growth-summary');
     return response.data;
   },
 
   async getEmotionalAnalytics(): Promise<any> {
-    const response = await api.get('/emotionalAnalytics/weekly-report');
+    const response = await api.get('/emotional-analytics/weekly-report');
     return response.data;
   },
 
@@ -332,7 +264,7 @@ export const AnalyticsAPI = {
 // Connections API
 export const ConnectionsAPI = {
   async findConnections(connectionType: string = 'all'): Promise<any> {
-    const response = await api.post('/personalizedAI/find-connections', {
+    const response = await api.post('/personalized-ai/find-connections', {
       connectionType,
       limit: 20,
     });
@@ -340,7 +272,7 @@ export const ConnectionsAPI = {
   },
 
   async analyzeCompatibility(targetUserId: string): Promise<any> {
-    const response = await api.post('/personalizedAI/connection-insights', {
+    const response = await api.post('/personalized-ai/connection-insights', {
       targetUserId,
     });
     return response.data;
