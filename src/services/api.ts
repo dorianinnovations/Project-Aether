@@ -49,6 +49,71 @@ export interface ApiError {
   code?: string;
 }
 
+// UBPM Types
+export interface UBPMContext {
+  userId: string;
+  status?: string;
+  behavioralContext: {
+    communicationStyle: string;
+    preferredInteractionMode: string;
+    responseTime: string;
+    topicPreferences: string[];
+    detectedPatterns?: any[];
+    confidence?: number;
+  };
+  personalityContext: {
+    openness: number;
+    conscientiousness: number;
+    extraversion: number;
+    agreeableness: number;
+    neuroticism: number;
+  };
+  temporalContext: {
+    mostActiveHours: number[];
+    preferredSessionLength: number;
+    consistencyScore: number;
+  };
+  emotionalContext?: {
+    emotionalPatterns?: any[];
+  };
+  personalityTraits?: any[];
+  confidence: number;
+  dataPoints: number;
+  lastUpdated: string;
+  note?: string;
+  dataQuality?: {
+    score: number;
+    indicators: string[];
+    completeness?: number;
+    freshness?: number;
+  };
+}
+
+export interface CollectiveSnapshot {
+  id: string;
+  timestamp: string;
+  sampleSize: number;
+  dominantEmotion: string;
+  avgIntensity: number;
+  insight: string;
+  archetype: string;
+  status: string;
+  timeRange: string;
+}
+
+export interface SystemMetrics {
+  memory: {
+    systemUptime: number;
+    totalRequests: number;
+    requestsPerHour: number;
+    totalTokensSaved: number;
+    totalCostSaved: number;
+    optimizationStrategies: Record<string, number>;
+    activeUsers: number;
+    averageSavingsPerRequest: string;
+  };
+}
+
 // Token management
 export const TokenManager = {
   async getToken(): Promise<string | null> {
@@ -104,8 +169,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Log request for debugging
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // Request logging can be enabled for debugging if needed
     
     return config;
   },
@@ -118,7 +182,6 @@ api.interceptors.request.use(
 // Response interceptor - Handle errors
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
     return response;
   },
   async (error) => {
@@ -255,8 +318,30 @@ export const AnalyticsAPI = {
     return response.data;
   },
 
-  async getUBPMContext(): Promise<any> {
-    const response = await api.get('/ubpm/context');
+  async getUBPMContext(): Promise<{success: boolean; data: UBPMContext}> {
+    const response = await api.get('/test-ubpm/context');
+    return response.data;
+  },
+
+  async getCollectiveSnapshot(): Promise<{success: boolean; snapshot: CollectiveSnapshot}> {
+    const response = await api.get('/collective-snapshots/latest');
+    return response.data;
+  },
+
+  async getSystemMetrics(): Promise<{data: SystemMetrics}> {
+    const response = await api.get('/analytics/system');
+    return response.data;
+  },
+
+  // NEW: Get real user behavior profile from MongoDB
+  async getUserBehaviorProfile(): Promise<any> {
+    const response = await api.get('/user/behavior-profile');
+    return response.data;
+  },
+
+  // NEW: Get collective emotions data (the real chart data)
+  async getCollectiveEmotions(): Promise<any> {
+    const response = await api.get('/collective-data/emotions');
     return response.data;
   },
 };
@@ -321,6 +406,16 @@ export const ConversationAPI = {
 
   async searchConversations(query: string, limit: number = 10): Promise<any> {
     const response = await api.get(`/conversations?search=${encodeURIComponent(query)}&limit=${limit}`);
+    return response.data;
+  },
+
+  async deleteConversation(conversationId: string): Promise<any> {
+    const response = await api.delete(`/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  async deleteAllConversations(): Promise<any> {
+    const response = await api.delete('/conversations/all');
     return response.data;
   },
 };

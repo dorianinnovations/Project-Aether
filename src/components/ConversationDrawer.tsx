@@ -88,8 +88,10 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const [allowInteraction, setAllowInteraction] = useState(true);
   const [showClearModal, setShowClearModal] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [clearStatus, setClearStatus] = useState<'idle' | 'deleting' | 'success' | 'error'>('idle');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting' | 'success' | 'error'>('idle');
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const pagerRef = useRef<PagerView>(null);
@@ -314,6 +316,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     clearContainerOpacity.value = withTiming(0, { duration: 200 }, () => {
       runOnJS(setShowClearModal)(false);
       runOnJS(setIsClearing)(false);
+      runOnJS(setClearStatus)('idle');
       trashScale.value = 1;
       checkOpacity.value = 0;
     });
@@ -321,6 +324,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 
   const confirmClearAll = async () => {
     setIsClearing(true);
+    setClearStatus('deleting');
     
     try {
       // Animate trash can
@@ -328,9 +332,10 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         trashScale.value = withTiming(0, { duration: 300 });
       });
 
-      // Clear conversations (mock for now - replace with actual API call)
-      await new Promise(resolve => setTimeout(resolve, 400));
+      // Clear all conversations via API - wait for real database confirmation
+      await ConversationAPI.deleteAllConversations();
       setConversations([]);
+      setClearStatus('success');
       
       // Show success animation
       setTimeout(() => {
@@ -347,6 +352,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 
     } catch (error) {
       console.error('Failed to clear conversations:', error);
+      setClearStatus('error');
       Alert.alert('Error', 'Failed to clear conversations. Please try again.');
       setIsClearing(false);
     }
@@ -367,6 +373,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     deleteContainerOpacity.value = withTiming(0, { duration: 200 }, () => {
       runOnJS(setShowDeleteModal)(false);
       runOnJS(setIsDeleting)(false);
+      runOnJS(setDeleteStatus)('idle');
       runOnJS(setConversationToDelete)(null);
       deleteTrashScale.value = 1;
       deleteCheckOpacity.value = 0;
@@ -377,6 +384,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     if (!conversationToDelete) return;
     
     setIsDeleting(true);
+    setDeleteStatus('deleting');
     
     try {
       // Animate trash can
@@ -384,9 +392,10 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         deleteTrashScale.value = withTiming(0, { duration: 300 });
       });
 
-      // Delete conversation (mock for now - replace with actual API call)
-      await new Promise(resolve => setTimeout(resolve, 400));
+      // Delete conversation via real API - wait for database confirmation
+      await ConversationAPI.deleteConversation(conversationToDelete);
       setConversations(prev => prev.filter(c => c._id !== conversationToDelete));
+      setDeleteStatus('success');
       
       // Show success animation
       setTimeout(() => {
@@ -403,6 +412,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 
     } catch (error) {
       console.error('Failed to delete conversation:', error);
+      setDeleteStatus('error');
       Alert.alert('Error', 'Failed to delete conversation. Please try again.');
       setIsDeleting(false);
     }
@@ -974,7 +984,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 : 'rgba(255, 255, 255, 0.3)',
             }
           ]}>
-            {!isClearing ? (
+            {clearStatus === 'idle' ? (
               <>
                 <FontAwesome5 
                   name="exclamation-triangle" 
@@ -1039,7 +1049,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   </TouchableOpacity>
                 </View>
               </>
-            ) : (
+            ) : clearStatus === 'deleting' ? (
               <>
                 <Animated.View style={trashAnimatedStyle}>
                   <FontAwesome5 
@@ -1049,16 +1059,40 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   />
                 </Animated.View>
                 
+                <ActivityIndicator 
+                  size="small" 
+                  color={theme === 'dark' ? '#6ec5ff' : '#4a5568'} 
+                  style={{ marginTop: 16 }}
+                />
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { color: theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.primary }
+                ]}>
+                  Deleting from Database...
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
+                ]}>
+                  Please wait while we permanently delete all conversations
+                </Text>
+                
+                <View style={{ height: 68, marginTop: 24 }} />
+              </>
+            ) : clearStatus === 'success' ? (
+              <>
                 <Animated.View
                   style={[
                     checkAnimatedStyle,
-                    { position: 'absolute', top: 20 }
+                    { position: 'relative', top: 0 }
                   ]}
                 >
                   <FontAwesome5 
                     name="check-circle" 
                     size={15} 
-                    color={theme === 'dark' ? '#6ec5ff' : '#4a5568'} 
+                    color={theme === 'dark' ? '#10b981' : '#059669'} 
                   />
                 </Animated.View>
                 
@@ -1073,10 +1107,52 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   styles.modalMessage,
                   { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
                 ]}>
-                  All conversation history has been permanently deleted
+                  ✅ Database confirmed: All conversation history deleted
                 </Text>
                 
                 <View style={{ height: 68, marginTop: 24 }} />
+              </>
+            ) : (
+              <>
+                <FontAwesome5 
+                  name="times-circle" 
+                  size={15} 
+                  color={theme === 'dark' ? '#dc2626' : '#e53e3e'} 
+                />
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { color: theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.primary }
+                ]}>
+                  Deletion Failed
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
+                ]}>
+                  ❌ Database error: Failed to delete conversations
+                </Text>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    {
+                      backgroundColor: theme === 'dark' ? designTokens.surfaces.dark.elevated : designTokens.surfaces.light.elevated,
+                      marginTop: 24,
+                      width: '100%',
+                    }
+                  ]}
+                  onPress={hideClearModal}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.modalButtonText,
+                    { color: theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.secondary }
+                  ]}>
+                    Close
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
           </Animated.View>
@@ -1099,7 +1175,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 : 'rgba(255, 255, 255, 0.3)',
             }
           ]}>
-            {!isDeleting ? (
+            {deleteStatus === 'idle' ? (
               <>
                 <FontAwesome5 
                   name="exclamation-triangle" 
@@ -1164,7 +1240,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   </TouchableOpacity>
                 </View>
               </>
-            ) : (
+            ) : deleteStatus === 'deleting' ? (
               <>
                 <Animated.View style={deleteTrashAnimatedStyle}>
                   <FontAwesome5 
@@ -1174,16 +1250,40 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   />
                 </Animated.View>
                 
+                <ActivityIndicator 
+                  size="small" 
+                  color={theme === 'dark' ? '#6ec5ff' : '#4a5568'} 
+                  style={{ marginTop: 16 }}
+                />
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { color: theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.primary }
+                ]}>
+                  Deleting from Database...
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
+                ]}>
+                  Please wait while we permanently delete this conversation
+                </Text>
+                
+                <View style={{ height: 68, marginTop: 24 }} />
+              </>
+            ) : deleteStatus === 'success' ? (
+              <>
                 <Animated.View
                   style={[
                     deleteCheckAnimatedStyle,
-                    { position: 'absolute', top: 20 }
+                    { position: 'relative', top: 0 }
                   ]}
                 >
                   <FontAwesome5 
                     name="check-circle" 
                     size={15} 
-                    color={theme === 'dark' ? '#6ec5ff' : '#4a5568'} 
+                    color={theme === 'dark' ? '#10b981' : '#059669'} 
                   />
                 </Animated.View>
                 
@@ -1198,10 +1298,52 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   styles.modalMessage,
                   { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
                 ]}>
-                  The conversation has been permanently deleted
+                  ✅ Database confirmed: Conversation permanently deleted
                 </Text>
                 
                 <View style={{ height: 68, marginTop: 24 }} />
+              </>
+            ) : (
+              <>
+                <FontAwesome5 
+                  name="times-circle" 
+                  size={15} 
+                  color={theme === 'dark' ? '#dc2626' : '#e53e3e'} 
+                />
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { color: theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.primary }
+                ]}>
+                  Deletion Failed
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
+                ]}>
+                  ❌ Database error: Failed to delete conversation
+                </Text>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    {
+                      backgroundColor: theme === 'dark' ? designTokens.surfaces.dark.elevated : designTokens.surfaces.light.elevated,
+                      marginTop: 24,
+                      width: '100%',
+                    }
+                  ]}
+                  onPress={hideDeleteModal}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.modalButtonText,
+                    { color: theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.secondary }
+                  ]}>
+                    Close
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
           </Animated.View>
