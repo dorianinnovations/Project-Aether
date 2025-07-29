@@ -1,0 +1,429 @@
+/**
+ * Numina API Service
+ * Centralized API management with authentication and error handling
+ */
+
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// API Configuration
+const API_BASE_URL = 'https://server-a7od.onrender.com';
+const AUTH_TOKEN_KEY = '@numina_auth_token';
+const USER_DATA_KEY = '@numina_user_data';
+
+// Create axios instance
+const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Types
+export interface AuthResponse {
+  status: string;
+  token: string;
+  data: {
+    user: {
+      id: string;
+      email: string;
+    };
+  };
+  welcomeEmail?: {
+    sent: boolean;
+    service: string;
+    messageId: string;
+  };
+}
+
+export interface ChatResponse {
+  content: string;
+  timestamp?: string;
+  metadata?: any;
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+}
+
+// Token management
+export const TokenManager = {
+  async getToken(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return null;
+    }
+  },
+
+  async setToken(token: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+    } catch (error) {
+      console.error('Error setting token:', error);
+    }
+  },
+
+  async removeToken(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+      await AsyncStorage.removeItem(USER_DATA_KEY);
+    } catch (error) {
+      console.error('Error removing token:', error);
+    }
+  },
+
+  async getUserData(): Promise<any> {
+    try {
+      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Error getting user data:', error);
+      return null;
+    }
+  },
+
+  async setUserData(userData: any): Promise<void> {
+    try {
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+    } catch (error) {
+      console.error('Error setting user data:', error);
+    }
+  },
+};
+
+// Request interceptor - Add auth token
+api.interceptors.request.use(
+  async (config: any) => {
+    const token = await TokenManager.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Log request for debugging
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Handle errors
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  async (error) => {
+    console.error('❌ API Error:', error.response?.status, error.response?.data);
+    
+    // Handle unauthorized - logout user
+    if (error.response?.status === 401) {
+      await TokenManager.removeToken();
+      // You might want to navigate to login screen here
+    }
+
+    // Create standardized error
+    const apiError: ApiError = {
+      message: error.response?.data?.message || error.message || 'Network error',
+      status: error.response?.status,
+      code: error.response?.data?.code,
+    };
+
+    return Promise.reject(apiError);
+  }
+);
+
+// Authentication API
+export const AuthAPI = {
+  async signup(email: string, password: string): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/signup', {
+      email,
+      password,
+    });
+    
+    // Store token and user data
+    await TokenManager.setToken(response.data.token);
+    await TokenManager.setUserData(response.data.data.user);
+    
+    return response.data;
+  },
+
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/login', {
+      email,
+      password,
+    });
+    
+    // Store token and user data
+    await TokenManager.setToken(response.data.token);
+    await TokenManager.setUserData(response.data.data.user);
+    
+    return response.data;
+  },
+
+  async logout(): Promise<void> {
+    await TokenManager.removeToken();
+  },
+
+  async refreshToken(): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/auth/refresh');
+    await TokenManager.setToken(response.data.token);
+    return response.data;
+  },
+};
+
+// Chat API
+export const ChatAPI = {
+  async sendMessage(prompt: string, stream: boolean = false): Promise<ChatResponse> {
+    const response = await api.post<ChatResponse>('/adaptive-chat', {
+      prompt,
+      stream,
+    });
+    
+    return response.data;
+  },
+
+  async sendAdaptiveMessage(message: string, stream: boolean = false): Promise<ChatResponse> {
+    const response = await api.post<ChatResponse>('/personalizedAI/contextual-chat', {
+      message,
+      stream,
+    });
+    
+    return response.data;
+  },
+
+  // SSE Streaming implementation
+  async *streamMessage(prompt: string, endpoint: string = '/adaptive-chat'): AsyncGenerator<string, void, unknown> {
+    console.log(`🌊 Starting SSE stream to ${endpoint} with prompt:`, prompt.substring(0, 50) + '...');
+    const token = await TokenManager.getToken();
+    const controller = new AbortController();
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          prompt,
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If not JSON, use the raw text or default message
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Failed to get response reader');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            
+            if (data === '[DONE]') {
+              return;
+            }
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                console.log(`📝 SSE chunk received:`, parsed.content.length, 'chars');
+                yield parsed.content;
+              }
+            } catch (e) {
+              // Skip malformed JSON
+              console.warn('Skipped malformed SSE data:', data);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('SSE streaming error:', error);
+      throw error;
+    }
+  },
+
+  async *streamAdaptiveMessage(message: string): AsyncGenerator<string, void, unknown> {
+    yield* this.streamMessage(message, '/personalizedAI/contextual-chat');
+  },
+};
+
+// User API
+export const UserAPI = {
+  async getProfile(): Promise<any> {
+    const response = await api.get('/user/profile');
+    return response.data;
+  },
+
+  async updateProfile(profileData: any): Promise<any> {
+    const response = await api.post('/user/profile', profileData);
+    return response.data;
+  },
+
+  async getSettings(): Promise<any> {
+    const response = await api.get('/user/settings');
+    return response.data;
+  },
+
+  async updateSettings(settings: any): Promise<any> {
+    const response = await api.post('/user/settings', settings);
+    return response.data;
+  },
+};
+
+// Analytics API
+export const AnalyticsAPI = {
+  async getPersonalInsights(): Promise<any> {
+    const response = await api.get('/personalInsights/growth-summary');
+    return response.data;
+  },
+
+  async getEmotionalAnalytics(): Promise<any> {
+    const response = await api.get('/emotionalAnalytics/weekly-report');
+    return response.data;
+  },
+
+  async getUBPMContext(): Promise<any> {
+    const response = await api.get('/ubpm/context');
+    return response.data;
+  },
+};
+
+// Connections API
+export const ConnectionsAPI = {
+  async findConnections(connectionType: string = 'all'): Promise<any> {
+    const response = await api.post('/personalizedAI/find-connections', {
+      connectionType,
+      limit: 20,
+    });
+    return response.data;
+  },
+
+  async analyzeCompatibility(targetUserId: string): Promise<any> {
+    const response = await api.post('/personalizedAI/connection-insights', {
+      targetUserId,
+    });
+    return response.data;
+  },
+
+  async getEvents(): Promise<any> {
+    const response = await api.get('/cloud/events');
+    return response.data;
+  },
+
+  async findEventMatches(filters: any): Promise<any> {
+    const response = await api.post('/cloud/events/match', filters);
+    return response.data;
+  },
+};
+
+// Conversation API
+export const ConversationAPI = {
+  async getRecentConversations(limit: number = 20): Promise<any> {
+    const response = await api.get(`/conversations/recent?limit=${limit}`);
+    return {
+      conversations: response.data.data || [],
+      total: response.data.total || 0
+    };
+  },
+
+  async getConversation(conversationId: string): Promise<any> {
+    const response = await api.get(`/conversations/${conversationId}`);
+    return response.data.data;
+  },
+
+  async createConversation(title?: string): Promise<any> {
+    const response = await api.post('/conversations', { title });
+    return response.data;
+  },
+
+  async syncConversations(lastSyncTimestamp?: string): Promise<any> {
+    const response = await api.post('/conversations/sync', { lastSyncTimestamp });
+    return response.data;
+  },
+
+  async addMessageToConversation(conversationId: string, message: any): Promise<any> {
+    const response = await api.post(`/conversations/${conversationId}/messages`, message);
+    return response.data;
+  },
+
+  async searchConversations(query: string, limit: number = 10): Promise<any> {
+    const response = await api.get(`/conversations?search=${encodeURIComponent(query)}&limit=${limit}`);
+    return response.data;
+  },
+};
+
+// Health check
+export const HealthAPI = {
+  async checkHealth(): Promise<any> {
+    const response = await api.get('/');
+    return response.data;
+  },
+};
+
+// Export the configured axios instance for custom requests
+export { api };
+
+// Export utility functions
+export const ApiUtils = {
+  isNetworkError: (error: any): boolean => {
+    return !error.response && error.request;
+  },
+
+  isServerError: (error: any): boolean => {
+    return error.response && error.response.status >= 500;
+  },
+
+  isClientError: (error: any): boolean => {
+    return error.response && error.response.status >= 400 && error.response.status < 500;
+  },
+
+  getErrorMessage: (error: any): string => {
+    if (error.message) return error.message;
+    if (error.response?.data?.message) return error.response.data.message;
+    if (error.request) return 'Network error - please check your connection';
+    return 'An unexpected error occurred';
+  },
+};
+
+export default api;
