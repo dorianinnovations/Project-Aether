@@ -151,7 +151,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
             trend: ubpmData.confidence > 0.5 ? 'up' : 'neutral',
             trendValue: `${ubpmData.dataPoints || 0} data points`,
             color: 'success',
-            subtitle: 'UBPM analysis confidence level',
+            subtitle: 'How well Numina understands your personality',
           });
           
           // Total behavioral patterns detected
@@ -162,30 +162,32 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
             trend: behavioralPatterns.length > 0 ? 'up' : 'neutral',
             trendValue: behavioralPatterns.length > 0 ? 'detected' : 'none yet',
             color: 'info',
-            subtitle: 'Real patterns from interactions',
+            subtitle: 'How you interact and communicate',
           });
           
           // Communication style analysis
+          const commStyle = ubpmData.behavioralContext?.communicationStyle || 'analyzing';
+          const commStyleReadable = commStyle.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           metricsArray.push({
             id: '3',
-            name: 'Communication',
-            value: ubpmData.behavioralContext?.communicationStyle || 'building',
+            name: 'Communication Style',
+            value: commStyleReadable,
             trend: 'neutral',
-            trendValue: `${Math.round((ubpmData.behavioralContext?.confidence || 0) * 100)}% sure`,
+            trendValue: `${Math.round((ubpmData.behavioralContext?.confidence || 0) * 100)}% confidence`,
             color: 'love',
-            subtitle: ubpmData.note || 'Detected communication style',
+            subtitle: 'Your unique way of expressing ideas',
           });
           
           // Raw emotion count (emotions analyzed from conversations)
           const rawEmotionCount = ubpmData.emotionalContext?.rawEmotionCount || 0;
           metricsArray.push({
             id: '4',
-            name: 'Emotions Analyzed',
+            name: 'Emotions Tracked',
             value: rawEmotionCount.toString(),
             trend: rawEmotionCount > 0 ? 'up' : 'neutral',
-            trendValue: rawEmotionCount > 0 ? 'detected' : 'learning',
+            trendValue: rawEmotionCount > 0 ? 'from chats' : 'start chatting',
             color: 'wisdom',
-            subtitle: 'Emotions detected from conversations',
+            subtitle: 'Emotional states captured while you chat',
           });
           
           // Personality traits analyzed
@@ -194,9 +196,9 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
             name: 'Personality Traits',
             value: personalityTraits.length.toString(),
             trend: personalityTraits.length > 0 ? 'up' : 'neutral',
-            trendValue: personalityTraits.length > 0 ? 'traits' : 'pending',
+            trendValue: personalityTraits.length > 0 ? 'identified' : 'analyzing',
             color: 'warning',
-            subtitle: 'Analyzed personality dimensions',
+            subtitle: 'Core aspects of who you are',
           });
           
           // Emotional pattern analysis (UBPM patterns)
@@ -205,20 +207,20 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
             name: 'Emotional Patterns',
             value: emotionalPatterns.length.toString(),
             trend: emotionalPatterns.length > 0 ? 'up' : 'neutral',
-            trendValue: emotionalPatterns.length > 0 ? 'patterns' : 'analyzing',
+            trendValue: emotionalPatterns.length > 0 ? 'patterns found' : 'need more data',
             color: 'love',
-            subtitle: 'UBPM emotional pattern analysis',
+            subtitle: 'How your emotions change over time',
           });
 
           // Data quality score
           metricsArray.push({
             id: '7',
-            name: 'Data Quality',
+            name: 'Profile Completeness',
             value: `${Math.round((ubpmData.dataQuality?.completeness || 0) * 100)}%`,
             trend: (ubpmData.dataQuality?.completeness || 0) > 0.7 ? 'up' : 'neutral',
-            trendValue: ubpmData.dataQuality?.freshness ? `${Math.round(ubpmData.dataQuality.freshness * 100)}% fresh` : 'building',
+            trendValue: ubpmData.dataQuality?.freshness ? `${Math.round(ubpmData.dataQuality.freshness * 100)}% fresh` : 'keep chatting',
             color: 'info',
-            subtitle: 'Profile completeness level',
+            subtitle: 'How complete your behavioral profile is',
           });
           
           processedMetrics = metricsArray;
@@ -334,34 +336,39 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
     const getDetailedExplanation = (metricName: string) => {
       const explanations: Record<string, { title: string; description: string; details: string }> = {
         'Profile Confidence': {
-          title: 'Profile Confidence Level',
-          description: 'How confident our AI is in understanding your behavioral patterns and personality.',
-          details: 'This metric increases as you interact more with Numina. Higher confidence means more accurate insights and personalized responses. Based on conversation depth, response patterns, and behavioral consistency.'
+          title: 'How Well Numina Knows You',
+          description: 'This shows how confident Numina is about understanding your personality and behavior.',
+          details: 'The more you chat, the higher this gets! A higher score means Numina can give you more personalized and accurate responses. It looks at how you communicate, your interests, and how consistent your behavior is.'
         },
         'Behavior Patterns': {
-          title: 'Detected Behavior Patterns',
-          description: 'Number of distinct behavioral patterns identified from your interactions.',
-          details: 'These patterns include communication style, decision-making preferences, emotional responses, and interaction habits. Each pattern helps Numina better understand and adapt to your unique personality.'
+          title: 'Your Interaction Style',
+          description: 'The different ways you communicate and behave that make you unique.',
+          details: 'Numina notices patterns like whether you ask lots of questions, prefer detailed explanations, or like to get straight to the point. These patterns help it talk to you in the way you prefer.'
         },
-        'Communication': {
-          title: 'Communication Style Analysis',
-          description: 'Your identified communication style and how you prefer to interact.',
-          details: 'Analyzes your language patterns, response styles, formality levels, and interaction preferences. This helps Numina match your communication style for more natural conversations.'
+        'Communication Style': {
+          title: 'How You Like to Talk',
+          description: 'Your unique way of expressing yourself and communicating with others.',
+          details: 'Are you formal or casual? Do you like detailed explanations or quick answers? Numina learns your style so it can talk to you in a way that feels natural and comfortable.'
+        },
+        'Emotions Tracked': {
+          title: 'Your Emotional Journey',
+          description: 'The different emotions Numina has detected while you chat.',
+          details: 'Every time you chat, Numina notices if you seem excited, curious, frustrated, or any other emotion. Tracking these helps it respond with the right tone and level of support.'
         },
         'Emotional Patterns': {
-          title: 'Emotional Response Patterns',
-          description: 'Emotional signatures and response patterns identified from your conversations.',
-          details: 'Tracks emotional context, sentiment patterns, and emotional intelligence indicators. This helps Numina provide more empathetic and emotionally appropriate responses.'
+          title: 'How Your Emotions Change',
+          description: 'Patterns in how your emotions shift and develop over time.',
+          details: 'After collecting enough emotional data, Numina can see if you tend to be consistently positive, how you handle stress, or if your mood varies throughout the day.'
         },
         'Personality Traits': {
-          title: 'Personality Trait Analysis',
-          description: 'Key personality dimensions and traits identified through behavioral analysis.',
-          details: 'Maps your personality across various dimensions like openness, conscientiousness, and social preferences. Used to personalize responses and recommendations to your personality type.'
+          title: 'What Makes You, You',
+          description: 'The core personality traits that define who you are.',
+          details: 'Are you analytical? Creative? Goal-oriented? Numina identifies your key personality traits from how you think and communicate, then uses this to give you responses that match your personality.'
         },
-        'Data Quality': {
-          title: 'Profile Data Quality',
-          description: 'The completeness and reliability of your behavioral profile data.',
-          details: 'Measures data freshness, consistency, and depth. Higher quality means more reliable insights. Improves over time as you interact more and provide consistent behavioral signals.'
+        'Profile Completeness': {
+          title: 'How Complete Your Profile Is',
+          description: 'Shows how much of your personality and behavior Numina has learned.',
+          details: 'The more you chat, the more complete your profile becomes. A complete profile means Numina can give you better, more personalized responses and insights about yourself.'
         }
       };
       return explanations[metricName] || {
@@ -563,7 +570,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
                       {metrics.find(m => m.name === 'Behavior Patterns')?.value || '0'}
                     </Text>
                     <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
-                      Patterns
+                      Behaviors
                     </Text>
                   </View>
                   
@@ -572,7 +579,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
                       {metrics.find(m => m.name === 'Personality Traits')?.value || '0'}
                     </Text>
                     <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
-                      Traits
+                      Personality
                     </Text>
                   </View>
                   
@@ -646,10 +653,10 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
         ) : (
           <View style={[styles.emptyState, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}>
             <Text style={[styles.emptyStateTitle, { color: themeColors.text }]}>
-              Building Your Profile
+              🧠 Getting to Know You
             </Text>
             <Text style={[styles.emptyStateText, { color: themeColors.textSecondary }]}>
-              Chat with Numina to start building your behavioral analytics. Your personality insights and activity patterns will appear here as you interact.
+              The more you chat with Numina, the better it understands your personality, communication style, and emotional patterns. Start a conversation to see your insights grow!
             </Text>
           </View>
         )}
