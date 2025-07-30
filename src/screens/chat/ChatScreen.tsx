@@ -163,17 +163,18 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener('keyboardWillShow', (event) => {
       setKeyboardHeight(event.endCoordinates.height);
-      // Animate greeting up when keyboard shows - much faster to sync with keyboard
+      // Ultra-smooth spring animation for 120fps-like movement
       Animated.parallel([
-        Animated.timing(greetingAnimY, {
+        Animated.spring(greetingAnimY, {
           toValue: -120,
-          duration: 150,
-          easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+          tension: 300,
+          friction: 25,
           useNativeDriver: true,
         }),
         Animated.timing(greetingOpacity, {
           toValue: 0.7,
-          duration: 150,
+          duration: 200,
+          easing: Easing.bezier(0.23, 1, 0.32, 1), // Ultra-smooth easeOutQuart
           useNativeDriver: true,
         })
       ]).start();
@@ -181,17 +182,18 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
     const keyboardWillHide = Keyboard.addListener('keyboardWillHide', () => {
       setKeyboardHeight(0);
-      // Animate greeting back down when keyboard hides - faster for better sync
+      // Ultra-smooth spring animation back down with gentle settling
       Animated.parallel([
-        Animated.timing(greetingAnimY, {
+        Animated.spring(greetingAnimY, {
           toValue: 0,
-          duration: 150,
-          easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+          tension: 280,
+          friction: 30,
           useNativeDriver: true,
         }),
         Animated.timing(greetingOpacity, {
           toValue: 1,
-          duration: 150,
+          duration: 250,
+          easing: Easing.bezier(0.165, 0.84, 0.44, 1), // Ultra-smooth easeOutQuart
           useNativeDriver: true,
         })
       ]).start();
@@ -399,8 +401,18 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         return;
       }
       
-      // Load the full conversation from server
-      const fullConversation = await ConversationAPI.getConversation(conversation._id);
+      // Load the full conversation from server with max allowed messages (500)
+      const fullConversation = await ConversationAPI.getConversation(conversation._id, 500);
+      
+      // Debug logging
+      console.log('Loading conversation:', conversation._id);
+      console.log('Full conversation response:', fullConversation);
+      console.log('Messages in response:', fullConversation.messages?.length || 0);
+      
+      // Ensure we have messages
+      if (!fullConversation.messages || !Array.isArray(fullConversation.messages)) {
+        throw new Error('No messages found in conversation response');
+      }
       
       // Convert server messages to app format
       const convertedMessages: Message[] = fullConversation.messages.map((msg: any, index: number) => ({
@@ -410,6 +422,9 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         timestamp: msg.timestamp,
         variant: 'default',
       }));
+      
+      console.log('Converted messages count:', convertedMessages.length);
+      console.log('Sample converted messages:', convertedMessages.slice(0, 3));
       
       // Replace current messages with loaded conversation
       setMessages(convertedMessages);
@@ -421,20 +436,36 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       
     } catch (error: any) {
       console.error('Failed to load conversation:', error);
+      console.error('Error details:', {
+        status: error.status,
+        message: error.message,
+        response: error.response?.data
+      });
+      
+      let errorTitle = 'Error Loading Conversation';
+      let errorMessage = 'Failed to load conversation. Please try again.';
       
       if (error.status === 401) {
-        Alert.alert(
-          'Authentication Required',
-          'Please sign in to load your conversation history.',
-          [{ text: 'OK', style: 'default' }]
-        );
-      } else {
-        Alert.alert(
-          'Error',
-          'Failed to load conversation. Please try again.',
-          [{ text: 'OK', style: 'default' }]
-        );
+        errorTitle = 'Authentication Required';
+        errorMessage = 'Please sign in to load your conversation history.';
+      } else if (error.status === 404) {
+        errorTitle = 'Conversation Not Found';
+        errorMessage = 'This conversation may have been deleted or is no longer available.';
+      } else if (error.status === 403) {
+        errorTitle = 'Access Denied';
+        errorMessage = 'You do not have permission to access this conversation.';
+      } else if (error.message?.includes('No messages found')) {
+        errorTitle = 'Empty Conversation';
+        errorMessage = 'This conversation has no messages yet.';
+      } else if (error.message?.includes('timeout')) {
+        errorTitle = 'Connection Timeout';
+        errorMessage = 'The request timed out. Please check your internet connection and try again.';
+      } else if (error.status >= 500) {
+        errorTitle = 'Server Error';
+        errorMessage = 'The server is experiencing issues. Please try again later.';
       }
+      
+      Alert.alert(errorTitle, errorMessage, [{ text: 'OK', style: 'default' }]);
     } finally {
       setIsLoading(false);
     }
@@ -624,7 +655,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
             <ShimmerText 
               style={{
                 ...styles.greetingText,
-                color: colors.text,
+                color: theme === 'dark' ? colors.text : '#5A5A5A',
               }}
               intensity="subtle"
               duration={3000}
@@ -735,7 +766,6 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         onConversationsPress={() => setShowConversationDrawer(true)}
         theme={theme}
         isVisible={headerVisible}
-        isActive={isLoading || isTyping}
         isMenuOpen={showHeaderMenu}
       />
       

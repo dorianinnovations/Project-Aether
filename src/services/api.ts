@@ -461,8 +461,11 @@ export const ConversationAPI = {
     };
   },
 
-  async getConversation(conversationId: string): Promise<any> {
-    const response = await api.get(`/conversations/${conversationId}`);
+  async getConversation(conversationId: string, messageLimit?: number): Promise<any> {
+    // Use messageLimit parameter as expected by server (max 500)
+    const limit = Math.min(messageLimit || 500, 500); // Respect server max of 500
+    const params = `?messageLimit=${limit}`;
+    const response = await api.get(`/conversations/${conversationId}${params}`);
     return response.data.data;
   },
 
