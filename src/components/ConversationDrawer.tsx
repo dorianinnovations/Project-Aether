@@ -95,6 +95,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const pagerRef = useRef<PagerView>(null);
+  
 
   const themeColors = getThemeColors(theme);
   
@@ -332,8 +333,9 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         trashScale.value = withTiming(0, { duration: 300 });
       });
 
-      // Clear all conversations via API - wait for real database confirmation
+      // Delete all conversations
       await ConversationAPI.deleteAllConversations();
+      
       setConversations([]);
       setClearStatus('success');
       
@@ -350,10 +352,15 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         hideClearModal();
       }, 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to clear conversations:', error);
       setClearStatus('error');
-      Alert.alert('Error', 'Failed to clear conversations. Please try again.');
+      
+      Alert.alert(
+        'Error', 
+        error.message || 'Failed to clear conversations. Please try again.',
+        [{ text: 'OK', style: 'default', onPress: () => hideClearModal() }]
+      );
       setIsClearing(false);
     }
   };
@@ -410,10 +417,29 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         hideDeleteModal();
       }, 1500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete conversation:', error);
       setDeleteStatus('error');
-      Alert.alert('Error', 'Failed to delete conversation. Please try again.');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to delete conversation. Please try again.';
+      if (error.message?.includes('Network error')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('Authentication failed')) {
+        errorMessage = 'Session expired. Please sign in again to delete conversations.';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (error.message?.includes('attempts')) {
+        errorMessage = 'Server is temporarily unavailable. Please try again in a few minutes.';
+      }
+      
+      Alert.alert('Delete Conversation Failed', errorMessage, [
+        { text: 'OK', style: 'default' },
+        { text: 'Retry', style: 'default', onPress: () => {
+          setDeleteStatus('idle');
+          setTimeout(() => confirmDeleteConversation(), 500);
+        }}
+      ]);
       setIsDeleting(false);
     }
   };
@@ -1349,6 +1375,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
           </Animated.View>
         </Animated.View>
       )}
+
     </GestureHandlerRootView>
   );
 };

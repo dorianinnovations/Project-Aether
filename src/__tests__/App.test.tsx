@@ -199,7 +199,7 @@ describe('App - Initial Load and Navigation', () => {
         'navigation_complete'
       ];
       
-      const actualSteps = metrics.map(m => m.step);
+      const actualSteps = metrics.map((m: any) => m.step);
       expect(actualSteps).toEqual(expectedSteps);
     });
   });

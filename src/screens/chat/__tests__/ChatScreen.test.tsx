@@ -394,7 +394,7 @@ describe('ChatScreen - Core User Interactions', () => {
       expect(metrics.length).toBeGreaterThan(interactions.length);
       
       // Each metric should have timing data
-      metrics.forEach(metric => {
+      metrics.forEach((metric: any) => {
         expect(metric.timestamp).toBeGreaterThan(0);
       });
     });
@@ -424,7 +424,7 @@ describe('ChatScreen - Core User Interactions', () => {
       jest.advanceTimersByTime(1000);
       
       const metrics = metricsUtils.getTrackedMetrics();
-      const chokepointMetrics = metrics.filter(m => 
+      const chokepointMetrics = metrics.filter((m: any) => 
         chokepoints.includes(m.step)
       );
       

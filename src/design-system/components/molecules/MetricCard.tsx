@@ -84,6 +84,19 @@ const MetricCard: React.FC<MetricCardProps> = ({
     variant === 'featured' && styles.cardFeatured,
   ];
 
+  // Convert titles to moderately techy format
+  const getTechTitle = (title: string) => {
+    const techMap: Record<string, string> = {
+      'Profile Confidence': 'Confidence',
+      'Behavior Patterns': 'Patterns',
+      'Communication': 'Comm Style',
+      'Emotional Patterns': 'Emotions',
+      'Personality Traits': 'Traits',
+      'Data Quality': 'Data Quality',
+    };
+    return techMap[title] || title;
+  };
+
   const content = (
     <Animated.View 
       style={[
@@ -93,40 +106,45 @@ const MetricCard: React.FC<MetricCardProps> = ({
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: themeColors.textSecondary }]}>
-          {title}
+        <Text style={[styles.cardTitle, { color: themeColors.textSecondary }]}>
+          {getTechTitle(title)}
         </Text>
-        {trend && trendValue && (
-          <View style={[styles.trend, { backgroundColor: `${getTrendColor()}15` }]}>
-            <Text style={[styles.trendIcon, { color: getTrendColor() }]}>
-              {getTrendIcon()}
-            </Text>
-            <Text style={[styles.trendValue, { color: getTrendColor() }]}>
-              {trendValue}
-            </Text>
-          </View>
+        <View style={[styles.statusDot, { backgroundColor: metricColor }]} />
+      </View>
+
+      {/* Main Value Display */}
+      <View style={styles.valueContainer}>
+        <Text style={[
+          styles.value,
+          { color: metricColor },
+          variant === 'featured' && styles.valueFeatured,
+          variant === 'compact' && styles.valueCompact,
+        ]}>
+          {value}
+        </Text>
+        {trend && (
+          <Text style={[styles.trendIndicator, { color: getTrendColor() }]}>
+            {getTrendIcon()}
+          </Text>
         )}
       </View>
 
-      {/* Value */}
-      <Text style={[
-        styles.value,
-        { color: metricColor },
-        variant === 'featured' && styles.valueFeatured,
-        variant === 'compact' && styles.valueCompact,
-      ]}>
-        {value}
-      </Text>
-
-      {/* Subtitle */}
-      {subtitle && (
-        <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
-          {subtitle}
-        </Text>
+      {/* Trend Info */}
+      {trendValue && (
+        <View style={styles.trendContainer}>
+          <Text style={[styles.trendText, { color: getTrendColor() }]}>
+            {getTrendIcon()} {trendValue}
+          </Text>
+        </View>
       )}
 
-      {/* Accent line */}
-      <View style={[styles.accentLine, { backgroundColor: metricColor }]} />
+      {/* Progress indicator */}
+      <View style={[styles.progressBar, { backgroundColor: `${metricColor}20` }]}>
+        <View style={[styles.progressFill, { 
+          backgroundColor: metricColor,
+          width: typeof value === 'string' && value.includes('%') ? value as any : '70%'
+        }]} />
+      </View>
     </Animated.View>
   );
 
@@ -166,38 +184,34 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: spacing[2],
   },
 
-  title: {
+  cardTitle: {
     ...typography.textStyles.caption,
-    fontWeight: '500',
+    fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0,
     flex: 1,
   },
 
-  trend: {
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  valueContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-    borderRadius: 12,
-  },
-  trendIcon: {
-    ...typography.textStyles.caption,
-    marginRight: spacing[1],
-  },
-  trendValue: {
-    ...typography.textStyles.caption,
-    fontWeight: '600',
+    alignItems: 'baseline',
+    marginBottom: spacing[2],
   },
 
   value: {
     ...typography.textStyles.displaySmall,
     fontWeight: '700',
-    marginBottom: spacing[1],
+    flex: 1,
   },
   valueFeatured: {
     ...typography.textStyles.displayMedium,
@@ -206,15 +220,30 @@ const styles = StyleSheet.create({
     ...typography.textStyles.headlineMedium,
   },
 
-  subtitle: {
-    ...typography.textStyles.bodyLarge,
+  trendIndicator: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: spacing[1],
+  },
+
+  trendContainer: {
     marginBottom: spacing[2],
   },
 
-  accentLine: {
-    height: 3,
+  trendText: {
+    ...typography.textStyles.caption,
+    fontWeight: '600',
+  },
+
+  progressBar: {
+    height: 4,
     borderRadius: 2,
-    width: '30%',
+    overflow: 'hidden',
+  },
+
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
   },
 });
 

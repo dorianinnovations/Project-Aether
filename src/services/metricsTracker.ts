@@ -367,7 +367,7 @@ class MetricsTracker {
       sessionDuration,
       averageStepTime,
       commonPaths,
-      dropoffPoints: [...new Set(longSteps)],
+      dropoffPoints: Array.from(new Set(longSteps)),
       chokepointPerformance: this.chokePoints
     };
   }
@@ -411,7 +411,14 @@ class MetricsTracker {
     events: MetricEvent[];
     journeySteps: UserJourneyStep[];
     chokepoints: Record<string, ChokePoint>;
-    analysis: ReturnType<typeof this.getJourneyAnalysis>;
+    analysis: {
+      totalSteps: number;
+      sessionDuration: number;
+      averageStepTime: number;
+      commonPaths: string[];
+      dropoffPoints: string[];
+      chokepointPerformance: Map<string, ChokePoint>;
+    };
   } {
     const chokepointsObject = Object.fromEntries(this.chokePoints);
     

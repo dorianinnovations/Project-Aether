@@ -503,7 +503,7 @@ describe('User Flow Metrics Integration Tests', () => {
       
       // Verify error spike detection
       const errorSpikeEvents = errorEvents.filter(event => 
-        event.error?.includes('error_spike')
+        event.errorMessage?.includes('error_spike')
       );
       expect(errorSpikeEvents.length).toBeGreaterThan(0);
       

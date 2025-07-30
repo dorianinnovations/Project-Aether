@@ -270,15 +270,25 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
   };
 
   const toggleAttachmentButtons = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newVisibility = !attachmentButtonsVisible;
+    
+    // 🚀 ENHANCED HAPTIC FEEDBACK FOR MORPHING
+    if (newVisibility) {
+      // Opening - Medium impact for "expansion"
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } else {
+      // Closing - Light impact for "contraction"
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
     setAttachmentButtonsVisible(newVisibility);
     
+    // 🚀 SMOOTHER SPRING ANIMATION
     Animated.spring(attachmentButtonsAnim, {
       toValue: newVisibility ? 1 : 0,
       useNativeDriver: false,
-      tension: 200,
-      friction: 12,
+      tension: 220, // Slightly more snappy
+      friction: 10,  // Less friction for smoother motion
     }).start();
   }, [attachmentButtonsVisible, attachmentButtonsAnim]);
 
@@ -338,6 +348,32 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
             inputRange: [0, 1],
             outputRange: [16, 0],
           }),
+          // 🚀 ELASTIC STRETCHING EFFECT
+          height: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 0.3, 1],
+            outputRange: [68, 75, 68], // Slight stretch then back
+          }),
+          // 🚀 SHADOW CONTINUITY FOR DEPTH ILLUSION
+          shadowRadius: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [4, 12], // Deeper shadow when "expanded"
+          }),
+          shadowOpacity: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.1, 0.25], // More prominent shadow
+          }),
+          elevation: attachmentButtonsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [2, 8], // Android shadow elevation
+          }),
+          // 🚀 SUBTLE VERTICAL SHIFT - Creates "magnetic pull" effect
+          transform: [{
+            translateY: attachmentButtonsAnim.interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, -2, 0], // Slight upward pull then settle
+            })
+          }],
+          // Removed background glow - let glassmorphic style handle it
         }
       ]}>
         <View style={styles.inputRow}>
@@ -369,13 +405,14 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
               placeholder={hasImageOnlyMessage ? "Image ready to analyze..." : placeholder}
               placeholderTextColor={themeColors.textMuted}
               keyboardAppearance={theme}
-              multiline={false}
+              multiline={true}
               numberOfLines={1}
               maxLength={maxLength}
               onSubmitEditing={handleSendPress}
               returnKeyType="send"
               blurOnSubmit={false}
               scrollEnabled={true}
+              textBreakStrategy="balanced"
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
               editable={!isLoading}
@@ -486,9 +523,16 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
               inputRange: [0, 1],
               outputRange: [0, 60],
             }),
-            transform: [{
-              scaleY: attachmentButtonsAnim,
-            }],
+            transform: [
+              { scaleY: attachmentButtonsAnim },
+              // 🚀 SUBTLE UNFOLD ROTATION
+              { 
+                rotateX: attachmentButtonsAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['15deg', '0deg'], // Unfolds from tilted
+                })
+              }
+            ],
             marginBottom: attachmentButtonsVisible ? spacing[4] : 0,
             borderColor: themeColors.borders.default,
             borderTopWidth: 0,
@@ -635,6 +679,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     maxHeight: 44,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   textInput: {
     height: 44,
@@ -646,6 +691,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     fontFamily: 'Nunito-Regular',
     fontWeight: '400',
+    textAlign: 'left',
+    flexWrap: 'wrap',
+    overflow: 'hidden',
   },
   attachmentToggleButton: {
     width: 40,

@@ -94,7 +94,7 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
   const handleSignUpButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('SignUp');
+    navigation.navigate('Onboarding');
     Animated.sequence([
       Animated.timing(exploreButtonPressScale, {
         toValue: 0.95,
@@ -112,8 +112,8 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
   const handleTryDemoButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate to chat for demo
-    navigation.navigate('SignUp');
+    // Navigate to onboarding for demo
+    navigation.navigate('Onboarding');
     Animated.sequence([
       Animated.timing(demoButtonPressScale, {
         toValue: 0.95,
@@ -149,7 +149,7 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   };
 
   // Get gradient colors based on theme
-  const getGradientColors = () => {
+  const getGradientColors = (): readonly [string, string, string, string] => {
     if (theme === 'dark') {
       return [
         '#0a0a0a', // Deep black
@@ -205,7 +205,7 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     color: theme === 'dark' ? '#ffffff' : designTokens.text.secondary,
                     fontFamily: 'Nunito-SemiBold'
                   }
-                ]}
+                ] as any}
                 intensity="vibrant"
                 duration={3000}
                 delay={1000}
@@ -219,7 +219,7 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               style={[
                 styles.brandText,
                 { 
-                  color: theme === 'dark' ? '#e5e5e5' : '#2d3748',
+                  color: theme === 'dark' ? '#C5BDB5' : '#5A5A5A',
                   opacity: brandOpacity,
                 }
               ]}

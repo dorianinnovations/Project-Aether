@@ -23,6 +23,12 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
     setShowHeaderMenu(false);
     
     switch (key) {
+      case 'profile':
+        // For now, navigate to Chat as profile screen isn't implemented
+        if (screenName !== 'chat') {
+          (navigation as any).navigate('Chat');
+        }
+        break;
       case 'chat':
         if (screenName !== 'chat') {
           (navigation as any).navigate('Chat');
@@ -49,7 +55,7 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
         onSignOut?.();
         break;
       default:
-        console.log('Unknown menu action:', key);
+        // Unknown menu action - could add proper error handling if needed
     }
   };
 

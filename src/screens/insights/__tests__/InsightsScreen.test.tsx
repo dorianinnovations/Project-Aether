@@ -455,7 +455,7 @@ describe('InsightsScreen - Personal Analytics Journey', () => {
       });
       
       const metrics = metricsUtils.getTrackedMetrics();
-      const timeframeMetrics = metrics.filter(m => m.step.includes('timeframe_'));
+      const timeframeMetrics = metrics.filter((m: any) => m.step.includes('timeframe_'));
       
       expect(timeframeMetrics.length).toBe(timeframes.length);
     });
@@ -537,7 +537,7 @@ describe('InsightsScreen - Personal Analytics Journey', () => {
       jest.advanceTimersByTime(1000);
       
       const metrics = metricsUtils.getTrackedMetrics();
-      const consumptionMetrics = metrics.filter(m => 
+      const consumptionMetrics = metrics.filter((m: any) => 
         consumptionEvents.includes(m.step)
       );
       
@@ -599,7 +599,7 @@ describe('InsightsScreen - Personal Analytics Journey', () => {
       });
       
       const metrics = metricsUtils.getTrackedMetrics();
-      const engagementMetrics = metrics.filter(m => 
+      const engagementMetrics = metrics.filter((m: any) => 
         m.step.includes('recommendation_') && m.step.includes('_viewed')
       );
       

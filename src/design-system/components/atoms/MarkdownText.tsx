@@ -19,7 +19,7 @@ const MarkdownText: React.FC<MarkdownTextProps> = ({ children, style = {}, theme
   const parseMarkdown = (text: string) => {
     const parts: Array<{ text: string; style?: TextStyle; type?: string; containerStyle?: any }> = [];
     let colorIndex = 0;
-    let currentIndex = 0;
+    const currentIndex = 0;
 
     // Process each formatting type in order of priority
     const formatText = (inputText: string, startIndex: number = 0): void => {

@@ -212,7 +212,6 @@ export const Header: React.FC<HeaderProps> = ({
                       shadowOffset: { width: 0, height: theme === 'dark' ? 8 : 4 },
                       shadowOpacity: theme === 'dark' ? 0.25 : 0.4,
                       shadowRadius: theme === 'dark' ? 12 : 8,
-                      elevation: theme === 'dark' ? 16 : 12,
                     }
                   ]}
                   resizeMode="contain"

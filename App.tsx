@@ -18,6 +18,7 @@ import { LottieLoader } from './src/design-system/components/atoms';
 
 // Screens
 import HeroLandingScreen from './src/screens/HeroLandingScreen';
+import OnboardingScreen from './src/screens/onboarding/OnboardingScreen';
 import SignInScreen from './src/screens/auth/SignInScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
 import ChatScreen from './src/screens/chat/ChatScreen';
@@ -48,6 +49,7 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
   Hero: undefined;
+  Onboarding: undefined;
   SignIn: undefined;
   SignUp: undefined;
 };
@@ -80,6 +82,7 @@ const AuthNavigator = () => {
       }}
     >
       <AuthStack.Screen name="Hero" component={HeroLandingScreen} />
+      <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
       <AuthStack.Screen name="SignIn" component={SignInScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
     </AuthStack.Navigator>

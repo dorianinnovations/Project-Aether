@@ -1,481 +1,456 @@
 /**
  * Numina - Onboarding Screen
- * Techy editorial style with wheel-format card scrolling
+ * Minimal swipe-based onboarding with opacity transitions and staggered animations
+ * Introduces users to AI personalization and behavioral middleware concepts
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
   SafeAreaView,
   Animated,
   Dimensions,
   StatusBar,
-  TouchableOpacity,
-  Platform,
 } from 'react-native';
+import { PanGestureHandler, State, PanGestureHandlerGestureEvent, PanGestureHandlerStateChangeEvent } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
+import { ShimmerText } from '../../design-system/components/atoms';
+import { designTokens, getThemeColors } from '../../design-system/tokens/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../design-system/tokens/typography';
-import { spacing } from '../../design-system/tokens/spacing';
-import { designTokens } from '../../design-system/tokens/colors';
 
 const { width, height } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.85;
-const CARD_HEIGHT = height * 0.7;
 
 interface OnboardingScreenProps {
   navigation: any;
+  route: any;
 }
 
 interface OnboardingStep {
-  id: string;
   title: string;
   subtitle: string;
   description: string;
-  icon: string;
   accent: string;
-  technical: string;
+  category: 'FOUNDATION' | 'CONNECTION' | 'EXPERIENCE' | 'SOCIAL';
 }
 
 const onboardingSteps: OnboardingStep[] = [
   {
-    id: '1',
-    title: 'Neural Pattern Recognition',
-    subtitle: 'Your AI learns how you think',
-    description: 'Advanced behavioral modeling algorithms analyze your communication patterns, emotional responses, and decision-making processes to create a personalized neural map.',
-    icon: '🧠',
-    accent: '#6366f1',
-    technical: 'ML-powered pattern analysis',
+    title: "AI That Actually Remembers You",
+    subtitle: "Context as a Service",
+    description: "Every conversation gets scored and weighted. Your AI doesn't just see your prompt—it sees YOUR prompt, filtered through your unique cognitive signature.",
+    accent: "MEMORY",
+    category: "FOUNDATION"
   },
   {
-    id: '2', 
-    title: 'Contextual Memory System',
-    subtitle: 'Conversations that remember',
-    description: 'Dynamic memory architecture maintains conversation context across sessions, building long-term understanding of your preferences and growth patterns.',
-    icon: '💭',
-    accent: '#8b5cf6',
-    technical: 'Vector-based memory storage',
+    title: "The Missing Layer", 
+    subtitle: "The bridge between you and AI",
+    description: "Like having someone whisper in the AI's ear about how you think and communicate. Your thinking patterns become the lens through which AI understands you.",
+    accent: "CONTEXT",
+    category: "CONNECTION"
   },
   {
-    id: '3',
-    title: 'Adaptive Response Engine',
-    subtitle: 'Intelligence that evolves',
-    description: 'Real-time response optimization adjusts communication style, depth, and approach based on your current context and historical interaction data.',
-    icon: '⚡',
-    accent: '#06b6d4',
-    technical: 'Dynamic response calibration',
+    title: "Theme Customization for Intelligence",
+    subtitle: "Like themes for your phone, but for your brain", 
+    description: "Every AI interaction becomes tailored to your thinking patterns and problem-solving approach. Intelligence that actually gets how your mind works.",
+    accent: "PERSONALIZATION",
+    category: "EXPERIENCE"
   },
   {
-    id: '4',
-    title: 'Emotional Intelligence Layer',
-    subtitle: 'Understanding beyond words',
-    description: 'Multi-dimensional emotion processing interprets subtle cues in your communication to provide empathetic and contextually appropriate responses.',
-    icon: '❤️',
-    accent: '#f59e0b',
-    technical: 'Sentiment analysis pipeline',
-  },
-  {
-    id: '5',
-    title: 'Privacy-First Architecture',
-    subtitle: 'Your data, your control',
-    description: 'End-to-end encrypted processing ensures your personal data never leaves your device unprotected. Zero-trust security model with full user control.',
-    icon: '🔒',
-    accent: '#10b981',
-    technical: 'E2E encrypted processing',
-  },
+    title: "Authentic Social Connection",
+    subtitle: "Connect based on how minds actually work",
+    description: "Find people who complement your thinking style. Not based on looks or basic interests, but on genuine cognitive compatibility and communication patterns.",
+    accent: "COMPATIBILITY",
+    category: "SOCIAL"
+  }
 ];
 
-const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
+const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }) => {
   const { theme, colors } = useTheme();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollX = useRef(new Animated.Value(0)).current;
+  const themeColors = getThemeColors(theme);
   
-  // Animation values for staggered opacity effects
-  const cardAnimations = useRef(
-    onboardingSteps.map(() => ({
-      cardOpacity: new Animated.Value(0.3),
-      titleOpacity: new Animated.Value(0),
-      subtitleOpacity: new Animated.Value(0),
-      descriptionOpacity: new Animated.Value(0),
-      badgeOpacity: new Animated.Value(0),
-      iconOpacity: new Animated.Value(0),
-      progressOpacity: new Animated.Value(0),
-    }))
-  ).current;
-
-  const [isLastStep, setIsLastStep] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Animation refs
+  const translateX = useRef(new Animated.Value(0)).current;
+  const stepOpacity = useRef(new Animated.Value(0)).current;
+  const categoryOpacity = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
+  const descriptionOpacity = useRef(new Animated.Value(0)).current;
+  const accentOpacity = useRef(new Animated.Value(0)).current;
+  const borderOpacity = useRef(new Animated.Value(0)).current;
+  const progressOpacity = useRef(new Animated.Value(0)).current;
+  
+  const panRef = useRef<PanGestureHandler>(null);
 
   useEffect(() => {
-    // Initial animation
-    setTimeout(() => {
-      animateCard(0, true);
-    }, 300);
+    animateStepIn();
   }, []);
 
-  const animateCard = (index: number, isActive: boolean) => {
-    const animation = cardAnimations[index];
+  const animateStepIn = () => {
+    // Reset all animations
+    stepOpacity.setValue(0);
+    categoryOpacity.setValue(0);
+    titleOpacity.setValue(0);
+    subtitleOpacity.setValue(0);
+    descriptionOpacity.setValue(0);
+    accentOpacity.setValue(0);
+    borderOpacity.setValue(0);
+    progressOpacity.setValue(0);
+
+    // Advanced staggered sequence with precision timing
+    const staggerDelay = 80;
     
-    if (isActive) {
-      // Staggered fade-in sequence for active card
-      Animated.sequence([
-        // Card background fades in first
-        Animated.timing(animation.cardOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        // Then staggered content elements
-        Animated.stagger(120, [
-          Animated.timing(animation.badgeOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animation.iconOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animation.titleOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animation.subtitleOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animation.descriptionOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animation.progressOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-    } else {
-      // Quick fade-out for inactive cards
-      Animated.parallel([
-        Animated.timing(animation.cardOpacity, {
-          toValue: 0.3,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animation.titleOpacity, {
-          toValue: 0.4,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animation.subtitleOpacity, {
-          toValue: 0.3,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animation.descriptionOpacity, {
-          toValue: 0.2,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animation.badgeOpacity, {
-          toValue: 0.3,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animation.iconOpacity, {
-          toValue: 0.4,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animation.progressOpacity, {
-          toValue: 0.3,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  };
-
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CARD_WIDTH);
-    
-    if (index !== currentIndex && index >= 0 && index < onboardingSteps.length) {
-      // Haptic feedback on card change
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      
-      // Animate previous card
-      animateCard(currentIndex, false);
-      
-      // Animate new card
-      animateCard(index, true);
-      
-      setCurrentIndex(index);
-      setIsLastStep(index === onboardingSteps.length - 1);
-    }
-  };
-
-  // Navigation button opacity animations
-  const nextButtonOpacity = useRef(new Animated.Value(1)).current;
-  const backButtonOpacity = useRef(new Animated.Value(1)).current;
-
-  const animateButtonPress = (buttonOpacity: Animated.Value) => {
-    Animated.sequence([
-      Animated.timing(buttonOpacity, {
-        toValue: 0.6,
-        duration: 100,
+    Animated.stagger(staggerDelay, [
+      Animated.timing(stepOpacity, {
+        toValue: 1,
+        duration: 700,
         useNativeDriver: true,
       }),
-      Animated.timing(buttonOpacity, {
+      Animated.timing(borderOpacity, {
         toValue: 1,
-        duration: 200,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(categoryOpacity, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleOpacity, {
+        toValue: 1,
+        tension: 180,
+        friction: 12,
+        useNativeDriver: true,
+      }),
+      Animated.timing(subtitleOpacity, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(descriptionOpacity, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(accentOpacity, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(progressOpacity, {
+        toValue: 1,
+        duration: 700,
         useNativeDriver: true,
       }),
     ]).start();
   };
 
-  const goToNext = () => {
-    animateButtonPress(nextButtonOpacity);
+  const animateStepOut = (direction: 'left' | 'right', callback: () => void) => {
+    setIsAnimating(true);
     
-    if (currentIndex < onboardingSteps.length - 1) {
-      const nextIndex = currentIndex + 1;
-      scrollViewRef.current?.scrollTo({
-        x: nextIndex * CARD_WIDTH,
-        animated: true,
+    const targetX = direction === 'left' ? -width : width;
+    
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: targetX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(stepOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      translateX.setValue(direction === 'left' ? width : -width);
+      callback();
+      
+      // Animate in from opposite side
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsAnimating(false);
+        animateStepIn();
       });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    });
+  };
+
+  const handleNextStep = () => {
+    if (isAnimating) return;
+    
+    // Progressive haptic intensity based on step
+    const hapticIntensities = [
+      Haptics.ImpactFeedbackStyle.Light,
+      Haptics.ImpactFeedbackStyle.Medium, 
+      Haptics.ImpactFeedbackStyle.Heavy,
+      Haptics.ImpactFeedbackStyle.Heavy
+    ];
+    
+    Haptics.impactAsync(hapticIntensities[currentStep]);
+    
+    if (currentStep < onboardingSteps.length - 1) {
+      animateStepOut('left', () => {
+        setCurrentStep(currentStep + 1);
+      });
     } else {
-      handleGetStarted();
+      // Final step - premium completion haptic
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => {
+        navigation.replace('SignUp');
+      }, 200);
     }
   };
 
-  const goToPrevious = () => {
-    if (currentIndex === 0) return;
+  const handlePrevStep = () => {
+    if (isAnimating || currentStep === 0) return;
     
-    animateButtonPress(backButtonOpacity);
-    const prevIndex = currentIndex - 1;
-    scrollViewRef.current?.scrollTo({
-      x: prevIndex * CARD_WIDTH,
-      animated: true,
-    });
+    // Subtle reverse haptic
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handleGetStarted = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    navigation.replace('SignUp');
-  };
-
-  const renderCard = (step: OnboardingStep, index: number) => {
-    const animation = cardAnimations[index];
     
-    return (
-      <View key={step.id} style={styles.card}>
-        <Animated.View style={[
-          styles.cardContent,
-          {
-            backgroundColor: theme === 'dark' ? '#0a0a0a' : '#ffffff',
-            borderColor: theme === 'dark' ? '#262626' : '#e5e5e5',
-            opacity: animation.cardOpacity,
-          }
-        ]}>
-          {/* Technical badge with staggered opacity */}
-          <Animated.View 
-            style={[
-              styles.technicalBadge, 
-              { 
-                backgroundColor: step.accent + '20',
-                opacity: animation.badgeOpacity,
-              }
-            ]}
-          >
-            <Text style={[styles.technicalText, { color: step.accent }]}>
-              {step.technical}
-            </Text>
-          </Animated.View>
-
-          {/* Icon with staggered opacity */}
-          <Animated.View 
-            style={[
-              styles.iconContainer,
-              { opacity: animation.iconOpacity }
-            ]}
-          >
-            <Text style={styles.icon}>{step.icon}</Text>
-          </Animated.View>
-
-          {/* Content with individual opacity controls */}
-          <View style={styles.textContent}>
-            <Animated.Text style={[
-              styles.title,
-              { 
-                color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
-                opacity: animation.titleOpacity,
-              }
-            ]}>
-              {step.title}
-            </Animated.Text>
-            
-            <Animated.Text style={[
-              styles.subtitle,
-              { 
-                color: step.accent,
-                opacity: animation.subtitleOpacity,
-              }
-            ]}>
-              {step.subtitle}
-            </Animated.Text>
-            
-            <Animated.Text style={[
-              styles.description,
-              { 
-                color: theme === 'dark' ? '#a3a3a3' : '#525252',
-                opacity: animation.descriptionOpacity,
-              }
-            ]}>
-              {step.description}
-            </Animated.Text>
-          </View>
-
-          {/* Progress indicator with staggered opacity */}
-          <Animated.View 
-            style={[
-              styles.progressContainer,
-              { opacity: animation.progressOpacity }
-            ]}
-          >
-            <View style={styles.progressBar}>
-              {onboardingSteps.map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.progressDot,
-                    {
-                      backgroundColor: i === index 
-                        ? step.accent 
-                        : theme === 'dark' ? '#333333' : '#d1d5db',
-                      width: i === index ? 24 : 8,
-                    }
-                  ]}
-                />
-              ))}
-            </View>
-          </Animated.View>
-        </Animated.View>
-      </View>
-    );
+    animateStepOut('right', () => {
+      setCurrentStep(currentStep - 1);
+    });
   };
+
+  const onGestureEvent = (event: PanGestureHandlerGestureEvent) => {
+    if (isAnimating) return;
+    
+    const { translationX } = event.nativeEvent;
+    translateX.setValue(translationX * 0.3); // Dampened movement
+  };
+
+  const onHandlerStateChange = (event: PanGestureHandlerStateChangeEvent) => {
+    if (event.nativeEvent.state === State.BEGAN) {
+      // Subtle gesture start haptic
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
+    if (event.nativeEvent.state === State.END) {
+      const { translationX, velocityX } = event.nativeEvent;
+      
+      // Reset position with enhanced spring
+      Animated.spring(translateX, {
+        toValue: 0,
+        tension: 200,
+        friction: 10,
+        useNativeDriver: true,
+      }).start();
+
+      // Refined swipe thresholds for premium feel
+      const swipeThreshold = width * 0.2;
+      const velocityThreshold = 800;
+      
+      if (Math.abs(translationX) > swipeThreshold || Math.abs(velocityX) > velocityThreshold) {
+        // Gesture completion haptic
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        
+        if (translationX > 0 || velocityX > 0) {
+          // Swipe right - previous step
+          handlePrevStep();
+        } else {
+          // Swipe left - next step
+          handleNextStep();
+        }
+      } else {
+        // Failed gesture - subtle warning haptic
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+  };
+
+  const currentStepData = onboardingSteps[currentStep];
 
   return (
     <PageBackground theme={theme} variant="onboarding">
       <SafeAreaView style={styles.container}>
         <StatusBar 
-          barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
+          barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} 
           backgroundColor="transparent"
-          translucent
+          translucent={true}
         />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[
-            styles.headerTitle,
-            { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }
-          ]}>
-            Numina
-          </Text>
-          <Text style={[
-            styles.headerSubtitle,
-            { color: theme === 'dark' ? '#a3a3a3' : '#525252' }
-          ]}>
-            Adaptive Intelligence System
-          </Text>
-        </View>
+        <PanGestureHandler
+          ref={panRef}
+          onGestureEvent={onGestureEvent}
+          onHandlerStateChange={onHandlerStateChange}
+          activeOffsetX={[-20, 20]}
+          failOffsetY={[-40, 40]}
+        >
+          <Animated.View style={styles.gestureContainer}>
+            
+            {/* Advanced Progress System */}
+            <Animated.View style={[styles.progressContainer, { opacity: progressOpacity }]}>
+              <View style={styles.progressTrack}>
+                {onboardingSteps.map((step, index) => (
+                  <View key={index} style={styles.progressSegment}>
+                    <View
+                      style={[
+                        styles.progressNode,
+                        {
+                          backgroundColor: index === currentStep 
+                            ? (theme === 'dark' ? '#ffffff' : '#000000')
+                            : 'transparent',
+                          borderColor: index <= currentStep
+                            ? (theme === 'dark' ? '#ffffff' : '#000000')
+                            : (theme === 'dark' ? '#333333' : '#e5e7eb'),
+                          borderWidth: 1,
+                        },
+                      ]}
+                    />
+                    {index < onboardingSteps.length - 1 && (
+                      <View
+                        style={[
+                          styles.progressConnector,
+                          {
+                            backgroundColor: index < currentStep
+                              ? (theme === 'dark' ? '#ffffff' : '#000000')
+                              : (theme === 'dark' ? '#333333' : '#e5e7eb'),
+                          },
+                        ]}
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
 
-        {/* Card Carousel */}
-        <View style={styles.carouselContainer}>
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { 
-                useNativeDriver: false,
-                listener: handleScroll,
-              }
-            )}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.scrollContent}
-            decelerationRate="fast"
-            snapToInterval={CARD_WIDTH}
-            snapToAlignment="center"
-          >
-            {onboardingSteps.map((step, index) => renderCard(step, index))}
-          </ScrollView>
-        </View>
-
-        {/* Navigation */}
-        <View style={styles.navigation}>
-          <Animated.View style={{ opacity: backButtonOpacity }}>
-            <TouchableOpacity
+            {/* Advanced Content Framework */}
+            <Animated.View
               style={[
-                styles.navButton,
-                styles.backButton,
+                styles.contentFrame,
                 {
-                  backgroundColor: theme === 'dark' ? '#1a1a1a' : '#f3f4f6',
-                  opacity: currentIndex === 0 ? 0.3 : 1,
-                }
+                  opacity: stepOpacity,
+                  transform: [{ translateX }],
+                },
               ]}
-              onPress={goToPrevious}
-              disabled={currentIndex === 0}
-              activeOpacity={1} // Remove default opacity change
             >
-              <Text style={[
-                styles.navButtonText,
-                { color: theme === 'dark' ? '#ffffff' : '#374151' }
-              ]}>
-                Back
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
+              {/* Futuristic Border Container */}
+              <Animated.View 
+                style={[
+                  styles.borderContainer,
+                  { 
+                    opacity: borderOpacity,
+                    backgroundColor: theme === 'dark' ? 'transparent' : '#FAFAFA',
+                    borderColor: theme === 'dark' ? '#333333' : '#e5e7eb',
+                    // Neumorphic bottom-right shadow
+                    shadowColor: theme === 'dark' ? '#000000' : '#000000',
+                    shadowOffset: { width: 4, height: 8 },
+                    shadowOpacity: theme === 'dark' ? 0.6 : 0.4,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }
+                ]}
+              >
+                {/* Category Header */}
+                <Animated.View style={[styles.categoryHeader, { opacity: categoryOpacity }]}>
+                  <View style={styles.categoryIndicator}>
+                    <Text style={[
+                      styles.categoryText,
+                      { color: theme === 'dark' ? '#666666' : '#999999' }
+                    ]}>
+                      {currentStepData.category}
+                    </Text>
+                    <View style={[
+                      styles.categoryDivider,
+                      { backgroundColor: theme === 'dark' ? '#333333' : '#e5e7eb' }
+                    ]} />
+                  </View>
+                </Animated.View>
 
-          <View style={styles.stepIndicator}>
-            <Text style={[
-              styles.stepText,
-              { color: theme === 'dark' ? '#a3a3a3' : '#6b7280' }
-            ]}>
-              {currentIndex + 1} of {onboardingSteps.length}
-            </Text>
-          </View>
+                {/* Main Title */}
+                <Animated.View style={[styles.titleSection, { opacity: titleOpacity }]}>
+                  <ShimmerText
+                    style={[
+                      styles.titleText,
+                      { 
+                        color: theme === 'dark' ? '#E0E0E0' : '#333333',
+                      }
+                    ] as any}
+                    intensity="normal"
+                    duration={3000}
+                    delay={1200}
+                    customShimmerColor={theme === 'dark' ? '#4FC3F7' : '#2196F3'}
+                    waveWidth="normal"
+                  >
+                    {currentStepData.title}
+                  </ShimmerText>
+                </Animated.View>
 
-          <Animated.View style={{ opacity: nextButtonOpacity }}>
-            <TouchableOpacity
-              style={[
-                styles.navButton,
-                styles.nextButton,
-                {
-                  backgroundColor: onboardingSteps[currentIndex]?.accent || designTokens.brand.primary,
-                }
-              ]}
-              onPress={goToNext}
-              activeOpacity={1} // Remove default opacity change
-            >
-              <Text style={[styles.navButtonText, { color: '#ffffff' }]}>
-                {isLastStep ? 'Get Started' : 'Next'}
-              </Text>
-            </TouchableOpacity>
+                {/* Subtitle */}
+                <Animated.View style={[styles.subtitleSection, { opacity: subtitleOpacity }]}>
+                  <Text
+                    style={[
+                      styles.subtitleText,
+                      { 
+                        color: theme === 'dark' ? '#999999' : '#666666',
+                      }
+                    ]}
+                  >
+                    {currentStepData.subtitle}
+                  </Text>
+                </Animated.View>
+
+                {/* Technical Description */}
+                <Animated.View style={[styles.descriptionSection, { opacity: descriptionOpacity }]}>
+                  <Text
+                    style={[
+                      styles.descriptionText,
+                      { 
+                        color: theme === 'dark' ? '#cccccc' : '#4a4a4a',
+                      }
+                    ]}
+                  >
+                    {currentStepData.description}
+                  </Text>
+                </Animated.View>
+
+                {/* Accent Footer */}
+                <Animated.View style={[styles.accentFooter, { opacity: accentOpacity }]}>
+                  <View style={[
+                    styles.accentLine,
+                    { backgroundColor: theme === 'dark' ? '#333333' : '#e5e7eb' }
+                  ]} />
+                  <Text style={[
+                    styles.accentText,
+                    { color: theme === 'dark' ? '#666666' : '#999999' }
+                  ]}>
+                    {currentStepData.accent}
+                  </Text>
+                </Animated.View>
+
+              </Animated.View>
+            </Animated.View>
+
+            {/* Navigation Hint */}
+            <Animated.View style={[styles.navigationHint, { opacity: progressOpacity }]}>
+              <View style={styles.hintIndicator}>
+                <View style={[
+                  styles.gestureIndicator,
+                  { backgroundColor: theme === 'dark' ? '#333333' : '#e5e7eb' }
+                ]} />
+                <Text
+                  style={[
+                    styles.hintText,
+                    { 
+                      color: theme === 'dark' ? '#666666' : '#999999',
+                    }
+                  ]}
+                >
+                  {currentStep === onboardingSteps.length - 1 ? 'drift right to begin your journey' : 'drift right to continue'}
+                </Text>
+              </View>
+            </Animated.View>
+
           </Animated.View>
-        </View>
+        </PanGestureHandler>
       </SafeAreaView>
     </PageBackground>
   );
@@ -485,149 +460,162 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  gestureContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 20 : 40,
-    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 80,
   },
-  headerTitle: {
+  
+  // Advanced Progress System
+  progressContainer: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  progressTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressSegment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressNode: {
+    width: 8,
+    height: 8,
+    borderRadius: 2,
+  },
+  progressConnector: {
+    width: 24,
+    height: 1,
+    marginHorizontal: 4,
+  },
+  progressLabel: {
+    ...typography.textStyles.bodyMedium,
+    fontSize: 12,
+    fontWeight: '400',
+    letterSpacing: 1.2,
+    fontFamily: 'Nunito-Regular',
+  },
+  
+  // Futuristic Content Framework
+  contentFrame: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+  },
+  borderContainer: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 32,
+    gap: 24,
+  },
+  
+  // Category System
+  categoryHeader: {
+    alignItems: 'flex-start',
+  },
+  categoryIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  categoryText: {
+    ...typography.textStyles.bodyMedium,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    fontFamily: 'Nunito-SemiBold',
+  },
+  categoryDivider: {
+    height: 1,
+    flex: 1,
+  },
+  
+  // Typography Hierarchy
+  titleSection: {
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  titleText: {
     ...typography.textStyles.displayMedium,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 4,
+    textAlign: 'left',
+    letterSpacing: -0.8,
+    lineHeight: 28,
+    fontFamily: 'CrimsonPro-Bold',
   },
-  headerSubtitle: {
+  subtitleSection: {
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  subtitleText: {
     ...typography.textStyles.bodyMedium,
     fontSize: 14,
     fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    textAlign: 'left',
+    letterSpacing: -0.2,
+    lineHeight: 18,
+    fontFamily: 'Nunito-Medium',
   },
-  carouselContainer: {
+  descriptionSection: {
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  descriptionText: {
+    ...typography.textStyles.bodyMedium,
+    fontSize: 16,
+    fontWeight: '400',
+    textAlign: 'left',
+    lineHeight: 24,
+    letterSpacing: -0.1,
+    fontFamily: 'Nunito-Regular',
+  },
+  
+  // Accent Footer
+  accentFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  accentLine: {
+    height: 1,
     flex: 1,
-    justifyContent: 'center',
   },
-  scrollContent: {
-    paddingHorizontal: (width - CARD_WIDTH) / 2,
+  accentText: {
+    ...typography.textStyles.bodyMedium,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    fontFamily: 'Nunito-SemiBold',
   },
-  card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    marginHorizontal: spacing[2],
+  
+  // Navigation System
+  navigationHint: {
+    alignItems: 'center',
   },
-  cardContent: {
-    flex: 1,
-    borderRadius: 24,
-    padding: spacing[6],
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
-    justifyContent: 'space-between',
+  hintIndicator: {
+    alignItems: 'center',
+    gap: 8,
   },
-  technicalBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: spacing[4],
+  gestureIndicator: {
+    width: 32,
+    height: 2,
+    borderRadius: 1,
   },
-  technicalText: {
-    ...typography.textStyles.labelSmall,
+  hintText: {
+    ...typography.textStyles.bodyMedium,
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: spacing[4],
-  },
-  icon: {
-    fontSize: 64,
-    marginBottom: spacing[2],
-  },
-  textContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  title: {
-    ...typography.textStyles.displaySmall,
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: spacing[2],
-    lineHeight: 30,
-  },
-  subtitle: {
-    ...typography.textStyles.headlineMedium,
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: spacing[4],
-  },
-  description: {
-    ...typography.textStyles.bodyLarge,
-    fontSize: 16,
-    lineHeight: 26,
-    textAlign: 'center',
-    paddingHorizontal: spacing[2],
-  },
-  progressContainer: {
-    alignItems: 'center',
-    marginTop: spacing[4],
-  },
-  progressBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  progressDot: {
-    height: 4,
-    borderRadius: 2,
-    transition: 'all 0.3s ease',
-  },
-  navigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
-    paddingBottom: Platform.OS === 'ios' ? spacing[6] : spacing[4],
-  },
-  navButton: {
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[3],
-    borderRadius: 12,
-    minWidth: 80,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  backButton: {
-    // Additional back button styles
-  },
-  nextButton: {
-    // Additional next button styles
-  },
-  navButtonText: {
-    ...typography.textStyles.labelMedium,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  stepIndicator: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  stepText: {
-    ...typography.textStyles.labelSmall,
-    fontSize: 14,
     fontWeight: '500',
+    letterSpacing: 0.5,
+    fontFamily: 'Nunito-Medium',
   },
 });
 

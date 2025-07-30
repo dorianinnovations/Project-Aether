@@ -157,8 +157,8 @@ export async function streamChatMessage(
   const controller = new AbortController();
   
   const chunks: string[] = [];
-  let resolve: (value: IteratorResult<string, void>) => void;
-  let reject: (error: Error) => void;
+  let resolve: ((value: IteratorResult<string, void>) => void) | null = null;
+  let reject: ((error: Error) => void) | null = null;
   let done = false;
   let error: Error | null = null;
 
@@ -174,7 +174,7 @@ export async function streamChatMessage(
         chunks.push(chunk);
         if (resolve) {
           resolve({ value: chunk, done: false });
-          resolve = null as any;
+          resolve = null;
         }
       },
       onError: (err: Error) => {
@@ -182,13 +182,13 @@ export async function streamChatMessage(
         done = true;
         if (reject) {
           reject(err);
-          reject = null as any;
+          reject = null;
         }
       },
       onClose: () => {
         done = true;
         if (resolve) {
-          resolve({ value: undefined as any, done: true });
+          resolve({ value: undefined, done: true });
           resolve = null as any;
         }
       },
@@ -214,7 +214,7 @@ export async function streamChatMessage(
             
             // Timeout to prevent hanging
             setTimeout(() => {
-              if (resolve) {
+              if (resolve !== null) {
                 rej(new Error('Stream timeout'));
               }
             }, 5000);

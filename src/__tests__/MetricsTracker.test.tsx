@@ -66,13 +66,13 @@ describe('MetricsTracker - Core Functionality', () => {
       // Track failed attempt
       metricsTracker.trackChokePointAttempt('message_sending', false, 5000, 'Network timeout');
 
-      const chokepointMetrics = metricsTracker.getChokepointMetrics('message_sending');
+      const chokepointMetrics = metricsTracker.getChokepointMetrics('message_sending') as any;
       
       expect(chokepointMetrics).toBeDefined();
-      expect(chokepointMetrics?.totalAttempts).toBe(3);
-      expect(chokepointMetrics?.successRate).toBeCloseTo(0.67, 2); // 2/3 success rate
-      expect(chokepointMetrics?.averageTime).toBeCloseTo(2833, 0); // (1500+2000+5000)/3
-      expect(chokepointMetrics?.failureReasons).toContain('Network timeout');
+      expect(chokepointMetrics.totalAttempts).toBe(3);
+      expect(chokepointMetrics.successRate).toBeCloseTo(0.67, 2); // 2/3 success rate
+      expect(chokepointMetrics.averageTime).toBeCloseTo(2833, 0); // (1500+2000+5000)/3
+      expect(chokepointMetrics.failureReasons).toContain('Network timeout');
     });
 
     it('should track all predefined chokepoints', () => {

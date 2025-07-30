@@ -22,7 +22,7 @@ export const glassmorphism = {
     
     // Input fields, chat input
     input: {
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      backgroundColor: '#FFFFFF',
       backdropFilter: 'blur(15px)',
       borderWidth: 1,
       borderColor: 'rgba(255, 255, 255, 0.4)',

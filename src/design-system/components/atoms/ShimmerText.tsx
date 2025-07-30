@@ -1,56 +1,77 @@
 /**
  * ShimmerText Component
- * Enhanced shimmer text effect with theme awareness and customizable properties
+ * Smooth color-traveling shimmer effect through letters
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, View, Text, TextStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
+import { Animated, Text, TextStyle } from 'react-native';
 import { useTheme } from '../../../contexts/ThemeContext';
-import { designTokens } from '../../tokens/colors';
 
 interface ShimmerTextProps {
   children: string;
   style?: TextStyle;
   duration?: number;
-  shimmerColors?: string[];
   enabled?: boolean;
   delay?: number;
   intensity?: 'subtle' | 'normal' | 'vibrant';
+  customShimmerColor?: string;
+  waveWidth?: 'narrow' | 'normal' | 'wide';
 }
 
 export const ShimmerText: React.FC<ShimmerTextProps> = ({
   children,
   style,
-  duration = 2500,
-  shimmerColors,
+  duration = 2000,
   enabled = true,
   delay = 0,
-  intensity = 'normal'
+  intensity = 'normal',
+  customShimmerColor,
+  waveWidth = 'normal'
 }) => {
   const { theme } = useTheme();
   const animatedValue = useRef(new Animated.Value(0)).current;
 
-  // Get theme-aware shimmer colors
-  const getShimmerColors = (): string[] => {
-    if (shimmerColors) return shimmerColors;
+  // Get base and shimmer colors with high contrast
+  const getColors = () => {
+    // Use the style color if provided, otherwise fallback to clean grey
+    const baseColor = style?.color ? String(style.color) : (theme === 'dark' ? '#D4D4D4' : '#6B6B6B');
     
-    switch (intensity) {
-      case 'subtle':
-        return theme === 'dark' 
-          ? ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.1)']
-          : ['rgba(0, 0, 0, 0.05)', 'rgba(0, 0, 0, 0.1)', 'rgba(0, 0, 0, 0.15)', 'rgba(0, 0, 0, 0.1)', 'rgba(0, 0, 0, 0.05)'];
-      
-      case 'vibrant':
-        return theme === 'dark'
-          ? [designTokens.brand.accent, '#4ECDC4', '#C77DFF', '#FF8FA3', designTokens.brand.accent]
-          : [designTokens.brand.primary, designTokens.pastels.cyan, designTokens.pastels.purple, designTokens.pastels.pink, designTokens.brand.primary];
-      
+    // Use custom color if provided, otherwise use intensity-based defaults
+    let shimmerColor: string;
+    if (customShimmerColor) {
+      shimmerColor = customShimmerColor;
+    } else {
+      switch (intensity) {
+        case 'subtle':
+          shimmerColor = theme === 'dark' 
+            ? '#87CEEB'  // Bright sky blue
+            : '#1E90FF';  // Dodge blue
+          break;
+        case 'vibrant':
+          shimmerColor = theme === 'dark'
+            ? '#00BFFF'  // Deep sky blue - very bright
+            : '#0066FF';  // Bright blue
+          break;
+        default: // normal
+          shimmerColor = theme === 'dark'
+            ? '#4FC3F7'  // Light blue - clearly visible
+            : '#2196F3';  // Material blue
+          break;
+      }
+    }
+    
+    return { baseColor, shimmerColor };
+  };
+
+  // Get wave width settings
+  const getWaveSettings = () => {
+    switch (waveWidth) {
+      case 'narrow':
+        return { peakOffset: 0.02, endOffset: 0.04 };
+      case 'wide':
+        return { peakOffset: 0.06, endOffset: 0.12 };
       default: // normal
-        return theme === 'dark'
-          ? ['rgba(123, 167, 231, 0.3)', 'rgba(173, 213, 250, 0.5)', 'rgba(255, 255, 255, 0.8)', 'rgba(173, 213, 250, 0.5)', 'rgba(123, 167, 231, 0.3)']
-          : ['rgba(123, 167, 231, 0.4)', 'rgba(173, 213, 250, 0.6)', 'rgba(255, 255, 255, 0.9)', 'rgba(173, 213, 250, 0.6)', 'rgba(123, 167, 231, 0.4)'];
+        return { peakOffset: 0.04, endOffset: 0.08 };
     }
   };
 
@@ -59,13 +80,14 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
 
     const animate = () => {
       animatedValue.setValue(0);
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration,
-        useNativeDriver: true,
-      }).start(() => {
-        setTimeout(() => animate(), delay + 200);
-      });
+      Animated.loop(
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 3500, // Total cycle duration - slower
+          useNativeDriver: false,
+        }),
+        { iterations: -1 }
+      ).start();
     };
     
     // Start animation after initial delay
@@ -78,55 +100,52 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
     return <Text style={style}>{children}</Text>;
   }
 
-  const translateX = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-400, 400],
-  });
-
-  const shimmerOpacity = animatedValue.interpolate({
-    inputRange: [0, 0.3, 0.7, 1],
-    outputRange: [0.3, 1, 1, 0.3],
-  });
+  const { baseColor, shimmerColor } = getColors();
+  const { peakOffset, endOffset } = getWaveSettings();
+  
+  // Split text into characters
+  const characters = children.split('');
 
   return (
-    <View style={{ overflow: 'visible' }}>
-      <MaskedView
-        style={{ 
-          flexDirection: 'row',
-          height: style?.fontSize ? Number(style.fontSize) + 10 : 30,
-          width: '100%',
-          minWidth: 300, // Ensure enough width for longer text
-        }}
-        maskElement={
-          <View style={{ width: '100%', alignItems: 'center' }}>
-            <Text style={[style, { backgroundColor: 'transparent', textAlign: 'center' }]}>
-              {children}
-            </Text>
-          </View>
-        }
-      >
-        <Animated.View
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            transform: [{ translateX }],
-            opacity: shimmerOpacity,
-          }}
-        >
-          <LinearGradient
-            colors={getShimmerColors()}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              flex: 1,
-              width: 500, // Increased width for longer text
-              minWidth: 500,
-            }}
-            locations={[0, 0.25, 0.5, 0.75, 1]}
-          />
-        </Animated.View>
-      </MaskedView>
-    </View>
+    <Text style={style}>
+      {characters.map((char, index) => {
+        // Calculate when this character should shimmer based on its position
+        const charProgress = index / Math.max(characters.length - 1, 1);
+        
+        // Map character position to the active wave period (0-0.3 of total cycle)
+        const waveStart = charProgress * 0.3;
+        const wavePeak = waveStart + peakOffset;
+        const waveEnd = waveStart + endOffset;
+        
+        // Create color interpolation for this specific character
+        const animatedColor = animatedValue.interpolate({
+          inputRange: [0, waveStart, wavePeak, waveEnd, 0.4, 1],
+          outputRange: [
+            baseColor,     // Start - static
+            baseColor,     // Just before shimmer
+            shimmerColor,  // Peak shimmer
+            baseColor,     // Just after shimmer
+            baseColor,     // Wave complete - static
+            baseColor,     // End of cycle - static
+          ],
+          extrapolate: 'clamp',
+        });
+
+        return (
+          <Animated.Text
+            key={index}
+            style={[
+              style,
+              {
+                color: animatedColor,
+              },
+            ]}
+          >
+            {char}
+          </Animated.Text>
+        );
+      })}
+    </Text>
   );
 };
 

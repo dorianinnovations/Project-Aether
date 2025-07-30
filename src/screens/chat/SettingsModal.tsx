@@ -32,8 +32,9 @@ import Icon from '../../design-system/components/atoms/Icon';
 import { useTheme } from '../../contexts/ThemeContext';
 
 // Services
-import { AuthAPI, TokenManager, UserAPI } from '../../services/api';
+import { AuthAPI, TokenManager, UserAPI, ConversationAPI } from '../../services/api';
 import SettingsStorage from '../../services/settingsStorage';
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -64,6 +65,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
   
   const glassmorphicOverlay = getGlassmorphicStyle('overlay', theme);
   const brickStyle = getBrickButtonStyle(theme);
@@ -229,9 +231,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         { 
           text: 'Clear Data', 
           style: 'destructive',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            // TODO: Implement data clearing
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              
+              // Delete conversations
+              await ConversationAPI.deleteAllConversations();
+              
+              // Clear local settings
+              await SettingsStorage.resetSettings();
+              await loadSettings();
+              
+              Alert.alert(
+                'Data Cleared',
+                'All conversations and preferences have been permanently deleted.',
+                [{ text: 'OK', style: 'default' }]
+              );
+              
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              
+            } catch (error: any) {
+              console.error('Failed to clear data:', error);
+              
+              Alert.alert(
+                'Error', 
+                error.message || 'Failed to clear data. Please try again.',
+                [{ text: 'OK', style: 'default' }]
+              );
+            } finally {
+              setIsLoading(false);
+            }
           }
         }
       ]
@@ -582,6 +612,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 undefined,
                 3
               )}
+              
+              {renderBrickButton(
+                'Clear All Data',
+                'Delete all conversations and preferences',
+                'trash-2',
+                handleClearData,
+                undefined,
+                4
+              )}
             </View>
 
             {/* Help & Support Section */}
@@ -623,7 +662,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </ScrollView>
         </View>
       </View>
-
     </Modal>
   );
 };

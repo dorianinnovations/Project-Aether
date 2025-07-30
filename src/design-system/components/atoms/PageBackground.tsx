@@ -15,7 +15,7 @@ import { designTokens, getThemeColors } from '../../tokens/colors';
 interface PageBackgroundProps {
   theme?: 'light' | 'dark';
   children: React.ReactNode;
-  variant?: 'default' | 'auth' | 'hero' | 'profile' | 'chat' | 'connections';
+  variant?: 'default' | 'auth' | 'hero' | 'profile' | 'chat' | 'connections' | 'insights' | 'onboarding';
   style?: ViewStyle;
 }
 
@@ -59,6 +59,16 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
         return theme === 'light'
           ? ['#e0f2fe', '#f0f9ff', '#e0f2fe'] // Ocean light
           : [darkGrey, '#1A1A1A', darkGrey]; // Consistent dark
+      
+      case 'insights':
+        return theme === 'light'
+          ? ['#fef7ff', '#f8f4ff', '#fef7ff'] // Insights purple tint
+          : [darkGrey, '#1A1A1A', darkGrey]; // Consistent dark
+      
+      case 'onboarding':
+        return theme === 'light'
+          ? dreamyGradientColors
+          : [darkGrey, '#1A1A1A', darkGrey];
       
       default:
         return theme === 'light' 

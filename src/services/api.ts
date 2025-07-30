@@ -179,23 +179,37 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors
+// Response interceptor - Handle errors with retry logic
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
   async (error) => {
+    const originalRequest = error.config;
+    
     console.error('❌ API Error:', error.response?.status, error.response?.data);
     
-    // Handle unauthorized - logout user
-    if (error.response?.status === 401) {
-      await TokenManager.removeToken();
-      // You might want to navigate to login screen here
+    // Handle unauthorized - attempt token refresh first
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // Try to refresh token
+        const refreshedAuth = await AuthAPI.refreshToken();
+        if (refreshedAuth.token) {
+          originalRequest.headers.Authorization = `Bearer ${refreshedAuth.token}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        await TokenManager.removeToken();
+        // Navigation to login should be handled by the app
+      }
     }
 
-    // Create standardized error
+    // Create standardized error with better messaging
     const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'Network error',
+      message: getErrorMessage(error),
       status: error.response?.status,
       code: error.response?.data?.code,
     };
@@ -203,6 +217,42 @@ api.interceptors.response.use(
     return Promise.reject(apiError);
   }
 );
+
+// Helper function for better error messages
+function getErrorMessage(error: any): string {
+  if (error.response?.data?.message) {
+    return error.response.data.message;
+  }
+  
+  if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+    return 'Request timed out. Please check your internet connection and try again.';
+  }
+  
+  if (error.code === 'NETWORK_ERROR' || !error.response) {
+    return 'Network error. Please check your internet connection.';
+  }
+  
+  switch (error.response?.status) {
+    case 400:
+      return 'Invalid request. Please try again.';
+    case 401:
+      return 'Authentication failed. Please sign in again.';
+    case 403:
+      return 'You do not have permission to perform this action.';
+    case 404:
+      return 'Resource not found.';
+    case 429:
+      return 'Too many requests. Please wait a moment and try again.';
+    case 500:
+      return 'Server error. Please try again later.';
+    case 502:
+    case 503:
+    case 504:
+      return 'Service temporarily unavailable. Please try again.';
+    default:
+      return error.message || 'An unexpected error occurred.';
+  }
+}
 
 // Authentication API
 export const AuthAPI = {
@@ -417,6 +467,60 @@ export const ConversationAPI = {
   async deleteAllConversations(): Promise<any> {
     const response = await api.delete('/conversations/all');
     return response.data;
+  },
+
+  // Deletion Queue API
+  async queueConversationDeletion(conversationId: string): Promise<any> {
+    const response = await api.post(`/deletion-queue/conversations/${conversationId}`);
+    return response.data;
+  },
+
+  async queueAllConversationsDeletion(): Promise<any> {
+    const response = await api.post('/deletion-queue/conversations/all');
+    return response.data;
+  },
+
+  async queueUserDataClearance(includeSettings: boolean = true): Promise<any> {
+    const response = await api.post('/deletion-queue/user-data', { includeSettings });
+    return response.data;
+  },
+
+  async getDeletionTaskStatus(taskId: string): Promise<any> {
+    const response = await api.get(`/deletion-queue/status/${taskId}`);
+    return response.data;
+  },
+
+  async getUserDeletionTasks(limit: number = 10): Promise<any> {
+    const response = await api.get(`/deletion-queue/tasks?limit=${limit}`);
+    return response.data;
+  },
+
+  // Retry logic for critical operations
+  async withRetry<T>(operation: () => Promise<T>, operationName: string, maxRetries: number = 2): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        console.log(`❌ Attempt ${attempt} failed for ${operationName}:`, error.message);
+        
+        // Don't retry on authentication errors or client errors (4xx)
+        if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+          throw error;
+        }
+        
+        // If this was the last attempt, throw the error
+        if (attempt === maxRetries + 1) {
+          throw new Error(`${operationName} failed after ${maxRetries + 1} attempts: ${error.message}`);
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`⏳ Retrying ${operationName} in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    throw new Error(`${operationName} failed after maximum retry attempts`);
   },
 };
 

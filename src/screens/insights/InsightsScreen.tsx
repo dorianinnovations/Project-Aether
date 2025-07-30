@@ -12,8 +12,9 @@ import {
   StatusBar,
   Text,
   RefreshControl,
-  Alert,
   Animated,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -21,15 +22,22 @@ import * as Haptics from 'expo-haptics';
 // Components
 import MetricCard from '../../design-system/components/molecules/MetricCard';
 import InsightChart from '../../design-system/components/molecules/InsightChart';
-import { Header, HeaderMenu, SignOutModal } from '../../design-system/components/organisms';
+import { Header, HeaderMenu, SignOutModal, MetricDetailModal } from '../../design-system/components/organisms';
+import { PageBackground } from '../../design-system/components/atoms/PageBackground';
+import LottieLoader from '../../design-system/components/atoms/LottieLoader';
+import SettingsModal from '../chat/SettingsModal';
 
 // Design System
 import { designTokens, getThemeColors } from '../../design-system/tokens/colors';
 import { typography } from '../../design-system/tokens/typography';
 import { spacing } from '../../design-system/tokens/spacing';
 import { createNeumorphicContainer } from '../../design-system/tokens/shadows';
+import { getGlassmorphicStyle } from '../../design-system/tokens/glassmorphism';
 import { createStaggeredEntrance, getInitialAnimatedValues } from '../../design-system/animations/entrance';
 import { useHeaderMenu } from '../../design-system/hooks';
+
+// Contexts
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Services
 import { AnalyticsAPI, ApiUtils, AuthAPI } from '../../services/api';
@@ -51,6 +59,9 @@ interface MetricData {
   trendValue: string;
   color: keyof typeof designTokens.semantic;
   subtitle?: string;
+  title?: string;
+  description?: string;
+  details?: string;
 }
 
 interface ChartData {
@@ -65,15 +76,10 @@ interface ChartData {
   }>;
 }
 
-interface InsightsScreenProps {
-  theme?: 'light' | 'dark';
-  onThemeToggle?: () => void;
-}
+interface InsightsScreenProps {}
 
-const InsightsScreen: React.FC<InsightsScreenProps> = ({
-  theme = 'light',
-  onThemeToggle,
-}) => {
+const InsightsScreen: React.FC<InsightsScreenProps> = () => {
+  const { theme, colors } = useTheme();
   // State
   const [insights, setInsights] = useState<InsightData[]>([]);
   const [metrics, setMetrics] = useState<MetricData[]>([]);
@@ -81,6 +87,9 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showMetricModal, setShowMetricModal] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<MetricData | null>(null);
 
   // Navigation
   const navigation = useNavigation();
@@ -88,13 +97,15 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
   // Header menu hook
   const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
     screenName: 'insights',
+    onSettingsPress: () => setShowSettings(true),
     onSignOut: () => setShowSignOutModal(true)
   });
   
   // Animation values
   const [animationValues] = useState(() => getInitialAnimatedValues(6));
 
-  const themeColors = getThemeColors(theme);
+  // Use colors from theme context instead of getThemeColors
+  const themeColors = colors;
 
   // Load insights data
   const loadInsights = async (showLoading = true) => {
@@ -102,132 +113,159 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
 
     try {
       // Try to make parallel API calls for better performance
-      let growthSummary, emotionalReport, ubpmContext;
+      let ubpmContext, collectiveSnapshot;
       
       try {
-        [growthSummary, emotionalReport, ubpmContext] = await Promise.all([
-          AnalyticsAPI.getPersonalInsights(),
-          AnalyticsAPI.getEmotionalAnalytics(),
-          AnalyticsAPI.getUBPMContext(),
-        ]);
+        ubpmContext = await AnalyticsAPI.getUBPMContext(); // ONLY individual user behavioral patterns
       } catch (apiError) {
-        console.log('API endpoints not available, using demo data');
-        // Continue with demo data
+        // API endpoints not available, continue with empty state
       }
 
-      // Process API data into component format
-      // Using demo data for MVP demonstration
-      const mockMetrics: MetricData[] = [
-        {
-          id: '1',
-          name: 'Growth Score',
-          value: '8.7',
-          trend: 'up',
-          trendValue: '+12%',
-          color: 'success',
-          subtitle: 'Personal development trajectory',
-        },
-        {
-          id: '2', 
-          name: 'Emotional Balance',
-          value: '92%',
-          trend: 'up',
-          trendValue: '+5%',
-          color: 'info',
-          subtitle: 'Weekly emotional stability',
-        },
-        {
-          id: '3',
-          name: 'Social Connections',
-          value: '24',
-          trend: 'neutral',
-          trendValue: '±0',
-          color: 'love',
-          subtitle: 'Active meaningful relationships',
-        },
-        {
-          id: '4',
-          name: 'Behavioral Patterns',
-          value: '156',
-          trend: 'up',
-          trendValue: '+8',
-          color: 'wisdom',
-          subtitle: 'Tracked behavioral insights',
-        },
-      ];
+      // Process REAL individual user behavioral data from MongoDB
+      let processedMetrics: MetricData[] = [];
+      let processedCharts: ChartData[] = [];
+      
+      if (ubpmContext?.success && ubpmContext.data) {
+        const ubpmData = ubpmContext.data;
+        
+        // Check if user has real behavioral data or is still building profile
+        if (ubpmData.status === 'building_profile') {
+          // New user - show empty state
+          processedMetrics = [];
+          processedCharts = [];
+        } else {
+          // User has real behavioral patterns
+          const behavioralPatterns = ubpmData.behavioralContext?.detectedPatterns || [];
+          const emotionalPatterns = ubpmData.emotionalContext?.emotionalPatterns || [];
+          const personalityTraits = ubpmData.personalityTraits || [];
+          
+          
+          // Build comprehensive metrics from real UBPM data
+          const metricsArray: MetricData[] = [];
+          
+          // Profile confidence - from ubpmData.confidence
+          metricsArray.push({
+            id: '1',
+            name: 'Profile Confidence',
+            value: `${Math.round((ubpmData.confidence || 0) * 100)}%`,
+            trend: ubpmData.confidence > 0.5 ? 'up' : 'neutral',
+            trendValue: `${ubpmData.dataPoints || 0} data points`,
+            color: 'success',
+            subtitle: 'UBPM analysis confidence level',
+          });
+          
+          // Total behavioral patterns detected
+          metricsArray.push({
+            id: '2', 
+            name: 'Behavior Patterns',
+            value: behavioralPatterns.length.toString(),
+            trend: behavioralPatterns.length > 0 ? 'up' : 'neutral',
+            trendValue: behavioralPatterns.length > 0 ? 'detected' : 'none yet',
+            color: 'info',
+            subtitle: 'Real patterns from interactions',
+          });
+          
+          // Communication style analysis
+          metricsArray.push({
+            id: '3',
+            name: 'Communication',
+            value: ubpmData.behavioralContext?.communicationStyle || 'building',
+            trend: 'neutral',
+            trendValue: `${Math.round((ubpmData.behavioralContext?.confidence || 0) * 100)}% sure`,
+            color: 'love',
+            subtitle: ubpmData.note || 'Detected communication style',
+          });
+          
+          // Emotional patterns count
+          metricsArray.push({
+            id: '4',
+            name: 'Emotional Patterns',
+            value: emotionalPatterns.length.toString(),
+            trend: emotionalPatterns.length > 0 ? 'up' : 'neutral',
+            trendValue: emotionalPatterns.length > 0 ? 'analyzed' : 'learning',
+            color: 'wisdom',
+            subtitle: 'Individual emotional signatures',
+          });
+          
+          // Personality traits analyzed
+          metricsArray.push({
+            id: '5',
+            name: 'Personality Traits',
+            value: personalityTraits.length.toString(),
+            trend: personalityTraits.length > 0 ? 'up' : 'neutral',
+            trendValue: personalityTraits.length > 0 ? 'traits' : 'pending',
+            color: 'warning',
+            subtitle: 'Analyzed personality dimensions',
+          });
+          
+          // Data quality score
+          metricsArray.push({
+            id: '6',
+            name: 'Data Quality',
+            value: `${Math.round((ubpmData.dataQuality?.completeness || 0) * 100)}%`,
+            trend: (ubpmData.dataQuality?.completeness || 0) > 0.7 ? 'up' : 'neutral',
+            trendValue: ubpmData.dataQuality?.freshness ? `${Math.round(ubpmData.dataQuality.freshness * 100)}% fresh` : 'building',
+            color: 'info',
+            subtitle: 'Profile completeness level',
+          });
+          
+          processedMetrics = metricsArray;
 
-      const mockCharts: ChartData[] = [
-        {
-          id: 'emotional-trends',
-          title: 'Emotional Trends',
-          subtitle: 'Last 7 days emotional patterns',
-          type: 'line',
-          data: [
-            { label: 'Mon', value: 75 },
-            { label: 'Tue', value: 82 },
-            { label: 'Wed', value: 78 },
-            { label: 'Thu', value: 88 },
-            { label: 'Fri', value: 92 },
-            { label: 'Sat', value: 85 },
-            { label: 'Sun', value: 90 },
-          ],
-        },
-        {
-          id: 'growth-areas',
-          title: 'Growth Areas',
-          subtitle: 'Personal development focus',
-          type: 'progress',
-          data: [
-            { label: 'Communication', value: 85, color: designTokens.semantic.success },
-            { label: 'Creativity', value: 72, color: designTokens.semantic.warning },
-            { label: 'Leadership', value: 68, color: designTokens.semantic.info },
-            { label: 'Mindfulness', value: 91, color: designTokens.semantic.wisdom },
-          ],
-        },
-        {
-          id: 'weekly-activity',
-          title: 'Weekly Activity',
-          subtitle: 'Engagement patterns',
-          type: 'bar',
-          data: [
-            { label: 'Chat', value: 45, color: designTokens.brand.primary },
-            { label: 'Insights', value: 28, color: designTokens.semantic.info },
-            { label: 'Connect', value: 32, color: designTokens.semantic.love },
-            { label: 'Reflect', value: 38, color: designTokens.semantic.wisdom },
-          ],
-        },
-      ];
+          // Create behavioral patterns chart
+          if (behavioralPatterns.length > 0) {
+            const behaviorChart: ChartData = {
+              id: 'behavioral-patterns',
+              title: 'Your Behavioral Patterns',
+              subtitle: `${behavioralPatterns.length} patterns detected with ${Math.round((ubpmData.confidence || 0) * 100)}% confidence`,
+              type: 'bar',
+              data: behavioralPatterns.map((pattern: string, index: number) => ({
+                label: pattern.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                value: Math.round((ubpmData.confidence || 0) * 100),
+                color: [
+                  designTokens.semantic.success,
+                  designTokens.semantic.info,
+                  designTokens.semantic.warning,
+                  designTokens.semantic.love,
+                  designTokens.semantic.wisdom
+                ][index % 5],
+              })),
+            };
+            processedCharts.push(behaviorChart);
+          }
 
-      const mockInsights: InsightData[] = [
-        {
-          id: '1',
-          category: 'behavioral',
-          title: 'Communication Pattern Shift',
-          description: 'You\'ve shown 23% more assertive communication this week, particularly in problem-solving conversations.',
-          confidence: 0.87,
-          timestamp: '2 hours ago',
-        },
-        {
-          id: '2',
-          category: 'growth',
-          title: 'Learning Acceleration',
-          description: 'Your curiosity-driven questions have increased 40%. This suggests an active growth mindset phase.',
-          confidence: 0.92,
-          timestamp: '5 hours ago',
-        },
-        {
-          id: '3',
-          category: 'emotional',
-          title: 'Emotional Resilience',
-          description: 'Response patterns indicate improved emotional regulation during challenging topics.',
-          confidence: 0.78,
-          timestamp: '1 day ago',
-        },
-      ];
+          // Create personality traits chart if available
+          if (personalityTraits.length > 0) {
+            const personalityChart: ChartData = {
+              id: 'personality-traits',
+              title: 'Personality Traits',
+              subtitle: `${personalityTraits.length} traits analyzed`,
+              type: 'progress',
+              data: personalityTraits.slice(0, 5).map((trait: any, index: number) => ({
+                label: trait.trait.charAt(0).toUpperCase() + trait.trait.slice(1),
+                value: Math.round((trait.score || 0) * 100),
+                color: [
+                  designTokens.semantic.success,
+                  designTokens.semantic.info,
+                  designTokens.semantic.warning,
+                  designTokens.semantic.love,
+                  designTokens.semantic.wisdom
+                ][index % 5],
+              })),
+            };
+            processedCharts.push(personalityChart);
+          }
+        }
+      }
 
-      setMetrics(mockMetrics);
-      setCharts(mockCharts);
-      setInsights(mockInsights);
+      // Show empty state for new users instead of fake data
+      const finalMetrics = processedMetrics.length > 0 ? processedMetrics : [];
+
+      // Use processed charts from real emotional data
+      const finalCharts = processedCharts.length > 0 ? processedCharts : [];
+
+      setMetrics(finalMetrics);
+      setCharts(finalCharts);
+      setInsights([]);
 
       // Trigger entrance animations
       if (showLoading) {
@@ -246,7 +284,9 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
         [{ text: 'OK', style: 'default' }]
       );
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
       setIsRefreshing(false);
     }
   };
@@ -256,20 +296,76 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
     loadInsights();
   }, []);
 
+  // Real-time polling for UBPM updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadInsights(false); // Refresh without loading state
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await loadInsights(false);
+    
+    // Execute API call and minimum duration in parallel for smooth UX
+    await Promise.all([
+      loadInsights(false),
+      new Promise(resolve => setTimeout(resolve, 1200)) // Minimum 1.2 seconds
+    ]);
   };
 
   // Handle metric card press
   const handleMetricPress = (metric: MetricData) => {
-    Alert.alert(
-      metric.name,
-      `Current Value: ${metric.value}\nTrend: ${metric.trendValue}\n\n${metric.subtitle}`,
-      [{ text: 'OK', style: 'default' }]
-    );
+    const getDetailedExplanation = (metricName: string) => {
+      const explanations: Record<string, { title: string; description: string; details: string }> = {
+        'Profile Confidence': {
+          title: 'Profile Confidence Level',
+          description: 'How confident our AI is in understanding your behavioral patterns and personality.',
+          details: 'This metric increases as you interact more with Numina. Higher confidence means more accurate insights and personalized responses. Based on conversation depth, response patterns, and behavioral consistency.'
+        },
+        'Behavior Patterns': {
+          title: 'Detected Behavior Patterns',
+          description: 'Number of distinct behavioral patterns identified from your interactions.',
+          details: 'These patterns include communication style, decision-making preferences, emotional responses, and interaction habits. Each pattern helps Numina better understand and adapt to your unique personality.'
+        },
+        'Communication': {
+          title: 'Communication Style Analysis',
+          description: 'Your identified communication style and how you prefer to interact.',
+          details: 'Analyzes your language patterns, response styles, formality levels, and interaction preferences. This helps Numina match your communication style for more natural conversations.'
+        },
+        'Emotional Patterns': {
+          title: 'Emotional Response Patterns',
+          description: 'Emotional signatures and response patterns identified from your conversations.',
+          details: 'Tracks emotional context, sentiment patterns, and emotional intelligence indicators. This helps Numina provide more empathetic and emotionally appropriate responses.'
+        },
+        'Personality Traits': {
+          title: 'Personality Trait Analysis',
+          description: 'Key personality dimensions and traits identified through behavioral analysis.',
+          details: 'Maps your personality across various dimensions like openness, conscientiousness, and social preferences. Used to personalize responses and recommendations to your personality type.'
+        },
+        'Data Quality': {
+          title: 'Profile Data Quality',
+          description: 'The completeness and reliability of your behavioral profile data.',
+          details: 'Measures data freshness, consistency, and depth. Higher quality means more reliable insights. Improves over time as you interact more and provide consistent behavioral signals.'
+        }
+      };
+      return explanations[metricName] || {
+        title: metricName,
+        description: 'Behavioral metric tracked by Numina AI.',
+        details: 'This metric helps improve your personalized AI experience.'
+      };
+    };
+
+    const explanation = getDetailedExplanation(metric.name);
+    
+    setSelectedMetric({
+      ...metric,
+      ...explanation
+    });
+    setShowMetricModal(true);
   };
 
   // Render insight card
@@ -281,47 +377,80 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
       social: designTokens.semantic.love,
     };
 
+    const categoryCode = {
+      growth: 'GRW',
+      emotional: 'EMO',
+      behavioral: 'BEH',
+      social: 'SOC',
+    };
+
     return (
       <View 
         key={insight.id}
-        style={[styles.insightCard, createNeumorphicContainer(theme, 'elevated')]}
+        style={[styles.metricCard, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}
       >
-        <View style={styles.insightHeader}>
-          <View style={[styles.categoryBadge, { backgroundColor: `${categoryColors[insight.category]}15` }]}>
-            <Text style={[styles.categoryText, { color: categoryColors[insight.category] }]}>
-              {insight.category.toUpperCase()}
-            </Text>
-          </View>
-          <Text style={[styles.insightTimestamp, { color: themeColors.textMuted }]}>
-            {insight.timestamp}
+        {/* Header with ID and Status */}
+        <View style={styles.metricHeader}>
+          <Text style={[styles.metricId, { color: categoryColors[insight.category] }]}>
+            #{categoryCode[insight.category]}-{insight.id.slice(-4).toUpperCase()}
+          </Text>
+          <View style={[styles.statusIndicator, { backgroundColor: categoryColors[insight.category] }]} />
+        </View>
+        
+        {/* Main Metric Display */}
+        <View style={styles.metricDisplay}>
+          <Text style={[styles.metricValue, { color: categoryColors[insight.category] }]}>
+            {Math.round(insight.confidence * 100)}
+          </Text>
+          <Text style={[styles.metricUnit, { color: themeColors.textMuted }]}>
+            %CONF
           </Text>
         </View>
         
-        <Text style={[styles.insightTitle, { color: themeColors.text }]}>
-          {insight.title}
-        </Text>
-        
-        <Text style={[styles.insightDescription, { color: themeColors.textSecondary }]}>
-          {insight.description}
-        </Text>
-        
-        <View style={styles.insightFooter}>
-          <View style={styles.confidenceBar}>
-            <View style={[styles.confidenceTrack, { backgroundColor: themeColors.surfaces.sunken }]}>
-              <View 
-                style={[
-                  styles.confidenceFill,
-                  { 
-                    width: `${insight.confidence * 100}%`,
-                    backgroundColor: categoryColors[insight.category],
-                  }
-                ]} 
-              />
-            </View>
-            <Text style={[styles.confidenceText, { color: themeColors.textMuted }]}>
-              {Math.round(insight.confidence * 100)}% confidence
+        {/* Technical Details */}
+        <View style={styles.techDetails}>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: themeColors.textMuted }]}>
+              TYPE:
+            </Text>
+            <Text style={[styles.detailValue, { color: themeColors.text }]}>
+              {insight.category.toUpperCase()}_PATTERN
             </Text>
           </View>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: themeColors.textMuted }]}>
+              TIMESTAMP:
+            </Text>
+            <Text style={[styles.detailValue, { color: themeColors.text }]}>
+              {insight.timestamp}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: themeColors.textMuted }]}>
+              STATUS:
+            </Text>
+            <Text style={[styles.detailValue, { color: categoryColors[insight.category] }]}>
+              ACTIVE
+            </Text>
+          </View>
+        </View>
+        
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressTrack, { backgroundColor: themeColors.surfaces.sunken }]}>
+            <View 
+              style={[
+                styles.progressFill,
+                { 
+                  width: `${insight.confidence * 100}%`,
+                  backgroundColor: categoryColors[insight.category],
+                }
+              ]} 
+            />
+          </View>
+          <Text style={[styles.progressLabel, { color: themeColors.textMuted }]}>
+            SIGNAL_STRENGTH
+          </Text>
         </View>
       </View>
     );
@@ -333,11 +462,11 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
   const renderHeader = () => (
     <Header
       title="Personal Insights"
-      subtitle="Numina-powered behavioral analysis and growth tracking"
       
       showMenuButton={true}
       showBackButton={false}
       onMenuPress={toggleHeaderMenu}
+      theme={theme as 'light' | 'dark'}
       isVisible={true}
       isActive={isLoading}
       isMenuOpen={showHeaderMenu}
@@ -345,12 +474,13 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <StatusBar 
-        barStyle={theme === 'light' ? 'dark-content' : 'light-content'}
-        backgroundColor="transparent"
-        translucent
-      />
+    <PageBackground theme={theme as 'light' | 'dark'} variant="insights">
+      <SafeAreaView style={styles.container}>
+        <StatusBar 
+          barStyle={theme === 'light' ? 'dark-content' : 'light-content'}
+          backgroundColor="transparent"
+          translucent
+        />
       
       {/* Header Menu */}
       <HeaderMenu
@@ -364,9 +494,21 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
         showAuthOptions={false}
       />
       
+      {/* Loading Animation */}
+      {(isLoading || isRefreshing) && (
+        <View style={styles.loadingContainer}>
+          <LottieLoader 
+            style={styles.loadingAnimation}
+          />
+        </View>
+      )}
+
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isLoading && styles.scrollContentWithLoading
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -377,50 +519,133 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
           />
         }
       >
-        {renderHeader()}
+
+        {/* Main Overview Card */}
+        {metrics.length > 0 && (
+          <View style={styles.overviewContainer}>
+            <View style={[styles.overviewCard, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}>
+              <View style={styles.overviewHeader}>
+                <Text style={[styles.overviewTitle, { color: themeColors.text }]}>
+                  Profile Overview
+                </Text>
+                <View style={[styles.overviewStatus, { backgroundColor: designTokens.semantic.success }]} />
+              </View>
+              
+              <View style={styles.overviewContent}>
+                <View style={styles.overviewMain}>
+                  <Text style={[styles.overviewValue, { color: designTokens.semantic.info }]}>
+                    {(() => {
+                      const confidenceMetric = metrics.find(m => m.name === 'Profile Confidence');
+                      const value = confidenceMetric?.value as string;
+                      return value ? parseInt(value.replace('%', '')) : 0;
+                    })()}
+                  </Text>
+                  <Text style={[styles.overviewUnit, { color: themeColors.textMuted }]}>
+                    % READY
+                  </Text>
+                </View>
+                
+                <View style={styles.overviewStats}>
+                  <View style={styles.overviewStat}>
+                    <Text style={[styles.overviewStatValue, { color: designTokens.semantic.success }]}>
+                      {metrics.find(m => m.name === 'Behavior Patterns')?.value || '0'}
+                    </Text>
+                    <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
+                      Patterns
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.overviewStat}>
+                    <Text style={[styles.overviewStatValue, { color: designTokens.semantic.wisdom }]}>
+                      {metrics.find(m => m.name === 'Personality Traits')?.value || '0'}
+                    </Text>
+                    <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
+                      Traits
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.overviewStat}>
+                    <Text style={[styles.overviewStatValue, { color: designTokens.semantic.love }]}>
+                      {metrics.find(m => m.name === 'Emotional Patterns')?.value || '0'}
+                    </Text>
+                    <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
+                      Emotions
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.overviewProgress}>
+                <View style={[styles.overviewProgressTrack, { backgroundColor: themeColors.surfaces.sunken }]}>
+                  <View 
+                    style={[
+                      styles.overviewProgressFill,
+                      { 
+                        width: `${(() => {
+                          const confidenceMetric = metrics.find(m => m.name === 'Profile Confidence');
+                          const value = confidenceMetric?.value as string;
+                          return value ? parseInt(value.replace('%', '')) : 0;
+                        })()}%`,
+                        backgroundColor: designTokens.semantic.info,
+                      }
+                    ]} 
+                  />
+                </View>
+                <Text style={[styles.overviewProgressLabel, { color: themeColors.textMuted }]}>
+                  ANALYSIS_PROGRESS
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Metrics Grid */}
-        <View style={styles.metricsGrid}>
-          {metrics.map((metric) => (
-            <View key={metric.id} style={styles.metricItem}>
-              <MetricCard
-                title={metric.name}
-                value={metric.value}
-                subtitle={metric.subtitle}
-                trend={metric.trend}
-                trendValue={metric.trendValue}
-                color={metric.color}
-                
-                onPress={() => handleMetricPress(metric)}
-              />
-            </View>
-          ))}
-        </View>
+        {metrics.length > 0 && (
+          <View style={styles.metricsGrid}>
+            {metrics.map((metric) => (
+              <View key={metric.id} style={styles.metricItem}>
+                <MetricCard
+                  title={metric.name}
+                  value={metric.value}
+                  subtitle={metric.subtitle}
+                  trend={metric.trend}
+                  trendValue={metric.trendValue}
+                  color={metric.color}
+                  theme={theme as 'light' | 'dark'}
+                  onPress={() => handleMetricPress(metric)}
+                />
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Charts */}
-        {charts.map((chart) => (
-          <InsightChart
-            key={chart.id}
-            title={chart.title}
-            subtitle={chart.subtitle}
-            data={chart.data}
-            type={chart.type}
-            
-          />
-        ))}
+        {charts.length > 0 ? (
+          charts.map((chart) => (
+            <InsightChart
+              key={chart.id}
+              title={chart.title}
+              subtitle={chart.subtitle}
+              data={chart.data}
+              type={chart.type}
+              theme={theme as 'light' | 'dark'}
+            />
+          ))
+        ) : (
+          <View style={[styles.emptyState, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}>
+            <Text style={[styles.emptyStateTitle, { color: themeColors.text }]}>
+              Building Your Profile
+            </Text>
+            <Text style={[styles.emptyStateText, { color: themeColors.textSecondary }]}>
+              Chat with Numina to start building your behavioral analytics. Your personality insights and activity patterns will appear here as you interact.
+            </Text>
+          </View>
+        )}
 
-        {/* Numina Insights */}
-        <View style={styles.insightsSection}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
-            Numina Insights
-          </Text>
-          <Text style={[styles.sectionSubtitle, { color: themeColors.textSecondary }]}>
-            Personalized insights from your behavioral patterns
-          </Text>
-          
-          {insights.map(renderInsightCard)}
-        </View>
       </ScrollView>
+      
+      {/* Header positioned absolutely */}
+      {renderHeader()}
       
       {/* Sign Out Modal */}
       <SignOutModal
@@ -434,9 +659,34 @@ const InsightsScreen: React.FC<InsightsScreenProps> = ({
             console.error('Sign out error:', error);
           }
         }}
-        theme={theme}
+        theme={theme as 'light' | 'dark'}
       />
-    </SafeAreaView>
+
+      {/* Metric Detail Modal */}
+      <MetricDetailModal
+        visible={showMetricModal}
+        onClose={() => {
+          setShowMetricModal(false);
+          setSelectedMetric(null);
+        }}
+        metric={selectedMetric ? {
+          title: selectedMetric.title || selectedMetric.name,
+          description: selectedMetric.description || selectedMetric.subtitle || '',
+          details: selectedMetric.details || 'No additional details available',
+          value: selectedMetric.value,
+          trendValue: selectedMetric.trendValue,
+        } : null}
+        theme={theme as 'light' | 'dark'}
+        color={selectedMetric?.color}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+      </SafeAreaView>
+    </PageBackground>
   );
 };
 
@@ -449,6 +699,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: Platform.OS === 'ios' ? 100 : 80, // Match chat page padding for header
     paddingBottom: spacing[6],
   },
 
@@ -469,11 +720,98 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  // Overview Card
+  overviewContainer: {
+    paddingHorizontal: spacing[3],
+    marginBottom: spacing[4],
+  },
+  overviewCard: {
+    padding: spacing[5],
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+  },
+  overviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  overviewTitle: {
+    ...typography.textStyles.headlineSmall,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  overviewStatus: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  overviewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  overviewMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  overviewValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    fontFamily: 'Monaco',
+    lineHeight: 52,
+  },
+  overviewUnit: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: spacing[2],
+    fontFamily: 'Monaco',
+  },
+  overviewStats: {
+    flexDirection: 'row',
+    gap: spacing[4],
+  },
+  overviewStat: {
+    alignItems: 'center',
+  },
+  overviewStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Monaco',
+  },
+  overviewStatLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: spacing[1],
+  },
+  overviewProgress: {
+    marginTop: spacing[3],
+  },
+  overviewProgressTrack: {
+    height: 8,
+    borderRadius: 4,
+    marginBottom: spacing[2],
+  },
+  overviewProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  overviewProgressLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Monaco',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+
   // Metrics
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing[2],
+    paddingHorizontal: spacing[3], // Match chat page spacing
   },
   metricItem: {
     width: '50%',
@@ -482,7 +820,8 @@ const styles = StyleSheet.create({
 
   // Sections
   insightsSection: {
-    margin: spacing[4],
+    marginHorizontal: spacing[3], // Match chat page margins
+    marginVertical: spacing[4],
   },
   sectionTitle: {
     ...typography.textStyles.headlineSmall,
@@ -494,58 +833,127 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
 
-  // Insight Cards
-  insightCard: {
+  // Metric Cards
+  metricCard: {
     padding: spacing[4],
-    borderRadius: 16,
+    borderRadius: 12,
     marginBottom: spacing[3],
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
-  insightHeader: {
+  metricHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing[3],
   },
-  categoryBadge: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: 12,
-  },
-  categoryText: {
+  metricId: {
     ...typography.textStyles.caption,
+    fontFamily: 'Monaco',
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  metricDisplay: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing[4],
+  },
+  metricValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    fontFamily: 'Monaco',
+    lineHeight: 36,
+  },
+  metricUnit: {
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    marginLeft: spacing[1],
+    fontFamily: 'Monaco',
   },
-  insightTimestamp: {
-    ...typography.textStyles.caption,
-  },
-  insightTitle: {
-    ...typography.textStyles.headlineSmall,
-    fontWeight: '600',
-    marginBottom: spacing[2],
-  },
-  insightDescription: {
-    ...typography.textStyles.body,
-    lineHeight: 20,
+  techDetails: {
     marginBottom: spacing[3],
   },
-  insightFooter: {
-    marginTop: 'auto',
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[1],
   },
-  confidenceBar: {
-    gap: spacing[2],
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Monaco',
+    letterSpacing: 0.5,
   },
-  confidenceTrack: {
-    height: 4,
-    borderRadius: 2,
-  },
-  confidenceFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  confidenceText: {
-    ...typography.textStyles.caption,
+  detailValue: {
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: 'Monaco',
     textAlign: 'right',
+    flex: 1,
+    marginLeft: spacing[2],
+  },
+  progressContainer: {
+    marginTop: spacing[2],
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    marginBottom: spacing[1],
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: 'Monaco',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+
+  // Empty State
+  emptyState: {
+    margin: spacing[4],
+    paddingVertical: spacing[8],
+    paddingHorizontal: spacing[6],
+    borderRadius: 20,
+    alignItems: 'center',
+    textAlign: 'center',
+  },
+  emptyStateTitle: {
+    ...typography.textStyles.headlineSmall,
+    fontWeight: '600',
+    marginBottom: spacing[3],
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    ...typography.textStyles.body,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Loading Animation
+  loadingContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 140 : 120, // Positioned below header
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    alignItems: 'center',
+  },
+  loadingAnimation: {
+    width: 50,
+    height: 50,
+  },
+  scrollContentWithLoading: {
+    paddingTop: Platform.OS === 'ios' ? 180 : 160, // Extra padding when loading
   },
 });
 

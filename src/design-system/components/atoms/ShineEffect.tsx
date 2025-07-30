@@ -28,7 +28,7 @@ export const ShineEffect: React.FC<ShineEffectProps> = ({
   const secondaryShimmer = useRef(new Animated.Value(0)).current;
 
   // Get theme-aware shine colors
-  const getPrimaryColors = () => {
+  const getPrimaryColors = (): readonly [string, string, ...string[]] => {
     const baseOpacity = intensity === 'subtle' ? 0.01 : intensity === 'premium' ? 0.04 : 0.02;
     
     if (theme === 'dark') {
@@ -42,7 +42,7 @@ export const ShineEffect: React.FC<ShineEffectProps> = ({
         `rgba(255, 255, 255, ${baseOpacity * 1.5})`,
         `rgba(255, 255, 255, ${baseOpacity})`,
         'transparent',
-      ];
+      ] as const;
     } else {
       return [
         'transparent',
@@ -54,11 +54,11 @@ export const ShineEffect: React.FC<ShineEffectProps> = ({
         `rgba(173, 213, 250, ${baseOpacity * 1.5})`,
         `rgba(123, 167, 231, ${baseOpacity})`,
         'transparent',
-      ];
+      ] as const;
     }
   };
 
-  const getSecondaryColors = () => {
+  const getSecondaryColors = (): readonly [string, string, ...string[]] => {
     const baseOpacity = intensity === 'subtle' ? 0.005 : intensity === 'premium' ? 0.02 : 0.01;
     
     if (theme === 'dark') {
@@ -68,7 +68,7 @@ export const ShineEffect: React.FC<ShineEffectProps> = ({
         `rgba(255, 255, 255, ${baseOpacity * 1.5})`,
         `rgba(240, 248, 255, ${baseOpacity})`,
         'transparent',
-      ];
+      ] as const;
     } else {
       return [
         'transparent',
@@ -76,7 +76,7 @@ export const ShineEffect: React.FC<ShineEffectProps> = ({
         `rgba(173, 213, 250, ${baseOpacity * 1.5})`,
         `rgba(123, 167, 231, ${baseOpacity})`,
         'transparent',
-      ];
+      ] as const;
     }
   };
 
