@@ -338,12 +338,37 @@ export const ChatAPI = {
 // User API
 export const UserAPI = {
   async getProfile(): Promise<any> {
-    const response = await api.get('/user/profile');
+    const response = await api.get('/profile');
     return response.data;
   },
 
   async updateProfile(profileData: any): Promise<any> {
     const response = await api.post('/user/profile', profileData);
+    return response.data;
+  },
+
+  async uploadProfilePicture(imageUri: string): Promise<any> {
+    const formData = new FormData();
+    
+    // Create file object for React Native
+    const imageFile = {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'profile-picture.jpg',
+    } as any;
+    
+    formData.append('profilePicture', imageFile);
+
+    const response = await api.post('/profile/picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async deleteProfilePicture(): Promise<any> {
+    const response = await api.delete('/profile/picture');
     return response.data;
   },
 
