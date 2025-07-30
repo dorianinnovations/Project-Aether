@@ -469,59 +469,7 @@ export const ConversationAPI = {
     return response.data;
   },
 
-  // Deletion Queue API
-  async queueConversationDeletion(conversationId: string): Promise<any> {
-    const response = await api.post(`/deletion-queue/conversations/${conversationId}`);
-    return response.data;
-  },
 
-  async queueAllConversationsDeletion(): Promise<any> {
-    const response = await api.post('/deletion-queue/conversations/all');
-    return response.data;
-  },
-
-  async queueUserDataClearance(includeSettings: boolean = true): Promise<any> {
-    const response = await api.post('/deletion-queue/user-data', { includeSettings });
-    return response.data;
-  },
-
-  async getDeletionTaskStatus(taskId: string): Promise<any> {
-    const response = await api.get(`/deletion-queue/status/${taskId}`);
-    return response.data;
-  },
-
-  async getUserDeletionTasks(limit: number = 10): Promise<any> {
-    const response = await api.get(`/deletion-queue/tasks?limit=${limit}`);
-    return response.data;
-  },
-
-  // Retry logic for critical operations
-  async withRetry<T>(operation: () => Promise<T>, operationName: string, maxRetries: number = 2): Promise<T> {
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      try {
-        return await operation();
-      } catch (error: any) {
-        console.log(`❌ Attempt ${attempt} failed for ${operationName}:`, error.message);
-        
-        // Don't retry on authentication errors or client errors (4xx)
-        if (error.status >= 400 && error.status < 500 && error.status !== 429) {
-          throw error;
-        }
-        
-        // If this was the last attempt, throw the error
-        if (attempt === maxRetries + 1) {
-          throw new Error(`${operationName} failed after ${maxRetries + 1} attempts: ${error.message}`);
-        }
-        
-        // Wait before retrying (exponential backoff)
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`⏳ Retrying ${operationName} in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    
-    throw new Error(`${operationName} failed after maximum retry attempts`);
-  },
 };
 
 // Health check

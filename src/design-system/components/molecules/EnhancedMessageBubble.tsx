@@ -130,6 +130,8 @@ const BotMessageContent: React.FC<{
             fontFamily: 'Nunito-Regular',
             fontWeight: '400',
             color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
+            flexWrap: 'wrap',
+            width: '100%',
           }}
         >
 {safeText}
@@ -396,6 +398,8 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
                       fontFamily: 'Nunito-Regular',
                       fontWeight: '400',
                       color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
+                      flexWrap: 'wrap',
+                      width: '100%',
                     }
                   ]}
                   numberOfLines={0}
@@ -569,7 +573,8 @@ const styles = StyleSheet.create({
     maxWidth: width * 0.95,
   },
   userMessageWrapper: {
-    width: '100%',
+    maxWidth: width * 0.85,
+    alignSelf: 'flex-end',
   },
   userMessageContainer: {
     alignItems: 'flex-end',
@@ -610,7 +615,7 @@ const styles = StyleSheet.create({
   botTextWrapper: {
     marginVertical: spacing[1] / 2,
     paddingHorizontal: spacing[1] / 2,
-    maxWidth: '95%',
+    maxWidth: width * 0.85,
     alignSelf: 'flex-start',
   },
   systemBubble: {
