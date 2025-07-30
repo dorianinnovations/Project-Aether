@@ -176,15 +176,16 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
             subtitle: ubpmData.note || 'Detected communication style',
           });
           
-          // Emotional patterns count
+          // Raw emotion count (emotions analyzed from conversations)
+          const rawEmotionCount = ubpmData.emotionalContext?.rawEmotionCount || 0;
           metricsArray.push({
             id: '4',
-            name: 'Emotional Patterns',
-            value: emotionalPatterns.length.toString(),
-            trend: emotionalPatterns.length > 0 ? 'up' : 'neutral',
-            trendValue: emotionalPatterns.length > 0 ? 'analyzed' : 'learning',
+            name: 'Emotions Analyzed',
+            value: rawEmotionCount.toString(),
+            trend: rawEmotionCount > 0 ? 'up' : 'neutral',
+            trendValue: rawEmotionCount > 0 ? 'detected' : 'learning',
             color: 'wisdom',
-            subtitle: 'Individual emotional signatures',
+            subtitle: 'Emotions detected from conversations',
           });
           
           // Personality traits analyzed
@@ -198,9 +199,20 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
             subtitle: 'Analyzed personality dimensions',
           });
           
-          // Data quality score
+          // Emotional pattern analysis (UBPM patterns)
           metricsArray.push({
             id: '6',
+            name: 'Emotional Patterns',
+            value: emotionalPatterns.length.toString(),
+            trend: emotionalPatterns.length > 0 ? 'up' : 'neutral',
+            trendValue: emotionalPatterns.length > 0 ? 'patterns' : 'analyzing',
+            color: 'love',
+            subtitle: 'UBPM emotional pattern analysis',
+          });
+
+          // Data quality score
+          metricsArray.push({
+            id: '7',
             name: 'Data Quality',
             value: `${Math.round((ubpmData.dataQuality?.completeness || 0) * 100)}%`,
             trend: (ubpmData.dataQuality?.completeness || 0) > 0.7 ? 'up' : 'neutral',
@@ -566,7 +578,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
                   
                   <View style={styles.overviewStat}>
                     <Text style={[styles.overviewStatValue, { color: designTokens.semantic.love }]}>
-                      {metrics.find(m => m.name === 'Emotional Patterns')?.value || '0'}
+                      {metrics.find(m => m.name === 'Emotions Analyzed')?.value || '0'}
                     </Text>
                     <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
                       Emotions
