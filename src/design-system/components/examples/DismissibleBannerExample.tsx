@@ -115,7 +115,7 @@ const DismissibleBannerExample: React.FC = () => {
         <DismissibleBanner
           visible={tipBanner.visible}
           onDismiss={tipBanner.hide}
-          content="💡 Tip: You can swipe between tabs to navigate quickly!"
+          content="Tip: You can swipe between tabs to navigate quickly!"
           variant="info"
           style="glassmorphic"
           showCloseButton={false}
@@ -131,7 +131,7 @@ const DismissibleBannerExample: React.FC = () => {
           visible={true}
           content={
             <View style={styles.customContent}>
-              <Text style={styles.customTitle}>🎉 Welcome to Aether!</Text>
+              <Text style={styles.customTitle}>Welcome to Aether!</Text>
               <Text style={styles.customText}>
                 Experience the future of AI-powered conversations
               </Text>

@@ -399,7 +399,8 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
                       fontWeight: '400',
                       color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
                       flexWrap: 'wrap',
-                      width: '100%',
+                      flexShrink: 1,
+                      maxWidth: '100%',
                     }
                   ]}
                   numberOfLines={0}
@@ -521,7 +522,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
                   typography.textStyles.bodySmall,
                   { color: theme === 'dark' ? '#a7f3d0' : '#065f46' }
                 ]}>
-                  💡 {message.aiInsight.suggestion}
+                  {message.aiInsight.suggestion}
                 </Text>
               </View>
             )}
@@ -610,7 +611,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    overflow: 'visible',
+    flexShrink: 1,
   },
   botTextWrapper: {
     marginVertical: spacing[1] / 2,
@@ -636,7 +637,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexWrap: 'wrap',
     width: '100%',
-    overflow: 'visible',
   },
   systemMessageText: {
     // Typography now handled inline for better control

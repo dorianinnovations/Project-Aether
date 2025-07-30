@@ -10,7 +10,7 @@ import * as Font from 'expo-font';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 // Removed bottom tabs - using stack navigation only
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 
 // Enhanced Components
 import { Header } from './src/design-system/components/organisms';
@@ -41,6 +41,8 @@ import { shadows } from './src/design-system/tokens/shadows';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+const { width } = Dimensions.get('window');
 
 // Navigation Types
 export type RootStackParamList = {
@@ -114,17 +116,13 @@ const LoadingScreen = () => {
 
   return (
     <View style={[styles.loadingContainer, { backgroundColor: themeColors.background }]}>
-      <Text style={[styles.logoText, { color: themeColors.primary }]}>
+      <Text style={[styles.logoText, { color: '#5A5A5A' }]}>
         Numina
       </Text>
-      <View style={[styles.logoAccent, { backgroundColor: designTokens.brand.accent }]} />
       <LottieLoader 
         size="large"
         style={styles.loadingSpinner}
       />
-      <Text style={[styles.loadingText, { color: themeColors.textMuted }]}>
-        Initializing Numina...
-      </Text>
     </View>
   );
 };
@@ -218,21 +216,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
   },
   logoText: {
-    ...typography.textStyles.displayLarge,
-    marginBottom: spacing[2],
-  },
-  logoAccent: {
-    width: 60,
-    height: 4,
-    borderRadius: 2,
+    fontSize: width < 350 ? 42 : width < 400 ? 48 : 54,
+    fontWeight: '700',
+    letterSpacing: -4.5,
+    textAlign: 'center',
     marginBottom: spacing[8],
+    fontFamily: 'CrimsonPro-Bold',
   },
   loadingSpinner: {
     marginBottom: spacing[4],
-  },
-  loadingText: {
-    ...typography.textStyles.bodyMedium,
-    textAlign: 'center',
   },
 
   // Placeholder Screens

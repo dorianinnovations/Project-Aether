@@ -78,22 +78,30 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
   useEffect(() => {
     if (!enabled) return;
 
+    let animationRef: any = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const animate = () => {
       animatedValue.setValue(0);
-      Animated.loop(
+      animationRef = Animated.loop(
         Animated.timing(animatedValue, {
           toValue: 1,
           duration: 3500, // Total cycle duration - slower
           useNativeDriver: false,
         }),
         { iterations: -1 }
-      ).start();
+      );
+      animationRef.start();
     };
     
     // Start animation after initial delay
-    const timeoutId = setTimeout(() => animate(), delay);
+    timeoutId = setTimeout(() => animate(), delay);
     
-    return () => clearTimeout(timeoutId);
+    // Cleanup function to stop animation and clear timeout
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (animationRef) animationRef.stop();
+    };
   }, [animatedValue, duration, enabled, delay]);
 
   if (!enabled) {

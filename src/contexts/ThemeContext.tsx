@@ -3,8 +3,9 @@
  * Manages global theme state with safe initialization and no circular dependencies
  */
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getThemeColors } from '../design-system/tokens/colors';
+import { SettingsStorage } from '../services/settingsStorage';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -22,9 +23,31 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<ThemeMode>('light');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const isDarkMode = await SettingsStorage.getSetting('darkMode', false);
+        setTheme(isDarkMode ? 'dark' : 'light');
+      } catch (error) {
+        console.warn('Failed to load theme preference:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTheme();
+  }, []);
+
+  const toggleTheme = async () => {
+    try {
+      const newTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      await SettingsStorage.setSetting('darkMode', newTheme === 'dark');
+    } catch (error) {
+      console.warn('Failed to save theme preference:', error);
+    }
   };
 
   // Get computed colors based on current theme
@@ -35,6 +58,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     colors,
     toggleTheme,
   };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider value={value}>

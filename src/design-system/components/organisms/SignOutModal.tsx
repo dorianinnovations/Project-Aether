@@ -3,7 +3,7 @@
  * Reusable modal that can be adapted for various confirmation dialogs
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -71,7 +71,6 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
   
   // Icon animation
   const iconScale = useRef(new Animated.Value(0)).current;
-  const iconRotation = useRef(new Animated.Value(0)).current;
 
   // Cleanup animations
   const resetAnimations = useCallback(() => {
@@ -80,7 +79,6 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     modalOpacity.setValue(0);
     modalTranslateY.setValue(50);
     iconScale.setValue(0);
-    iconRotation.setValue(0);
     confirmButtonScale.setValue(1);
     cancelButtonScale.setValue(1);
     setIsAnimating(false);
@@ -97,7 +95,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     // Background fade in
     Animated.timing(backgroundOpacity, {
       toValue: 1,
-      duration: 200,
+      duration: 150,
       useNativeDriver: true,
     }).start();
     
@@ -111,7 +109,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
       }),
       Animated.timing(modalOpacity, {
         toValue: 1,
-        duration: 250,
+        duration: 200,
         useNativeDriver: true,
         easing: Easing.out(Easing.quad),
       }),
@@ -139,18 +137,29 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
           }),
         ]).start();
         
-        // Subtle icon rotation for attention
-        Animated.timing(iconRotation, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.quad),
-        }).start();
+        // Subtle wiggle for attention
+        Animated.sequence([
+          Animated.timing(iconScale, {
+            toValue: 1.05,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(iconScale, {
+            toValue: 0.95,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(iconScale, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]).start();
       }
       
       setIsAnimating(false);
     });
-  }, [isAnimating, resetAnimations]);
+  }, [isAnimating, backgroundOpacity, modalScale, modalOpacity, modalTranslateY, iconScale, showIcon]);
 
   // Hide animation
   const hideModal = useCallback(() => {
@@ -162,36 +171,40 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     Animated.parallel([
       Animated.timing(backgroundOpacity, {
         toValue: 0,
-        duration: 150,
+        duration: 120,
         useNativeDriver: true,
       }),
       Animated.timing(modalScale, {
         toValue: 0.9,
-        duration: 150,
+        duration: 120,
         useNativeDriver: true,
         easing: Easing.in(Easing.quad),
       }),
       Animated.timing(modalOpacity, {
         toValue: 0,
-        duration: 150,
+        duration: 120,
         useNativeDriver: true,
         easing: Easing.in(Easing.quad),
       }),
       Animated.timing(modalTranslateY, {
         toValue: 30,
-        duration: 150,
+        duration: 120,
         useNativeDriver: true,
         easing: Easing.in(Easing.quad),
       }),
     ]).start(() => {
       resetAnimations();
     });
-  }, [isAnimating, resetAnimations]);
+  }, [isAnimating, backgroundOpacity, modalScale, modalOpacity, modalTranslateY, resetAnimations]);
 
-  // Effect to handle visibility changes
-  useEffect(() => {
+  // Effect to handle visibility changes - use useLayoutEffect to avoid insertion warnings
+  useLayoutEffect(() => {
     if (visible) {
-      showModal();
+      // Schedule animation in next tick to avoid insertion effect warning
+      const timeoutId = setTimeout(() => {
+        showModal();
+      }, 0);
+      return () => clearTimeout(timeoutId);
     } else {
       hideModal();
     }
@@ -288,10 +301,6 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     const iconName = variant !== 'danger' ? getVariantIcon() : icon;
     const iconColor = getVariantColor();
     
-    const rotation = iconRotation.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['0deg', variant === 'danger' ? '-5deg' : '0deg'],
-    });
     
     return (
       <Animated.View style={[
@@ -300,8 +309,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
           backgroundColor: iconColor + '15',
           borderColor: iconColor + '30',
           transform: [
-            { scale: iconScale },
-            { rotate: rotation }
+            { scale: iconScale }
           ],
         }
       ]}>
@@ -330,9 +338,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             styles.background,
             {
               opacity: backgroundOpacity,
-              backgroundColor: variant === 'danger' 
-                ? (theme === 'dark' ? 'rgba(20, 0, 0, 0.8)' : 'rgba(40, 10, 10, 0.6)')
-                : (theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)'),
+              backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
             }
           ]}
         >

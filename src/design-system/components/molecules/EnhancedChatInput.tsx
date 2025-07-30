@@ -272,7 +272,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
   const toggleAttachmentButtons = useCallback(() => {
     const newVisibility = !attachmentButtonsVisible;
     
-    // 🚀 ENHANCED HAPTIC FEEDBACK FOR MORPHING
+    // ENHANCED HAPTIC FEEDBACK FOR MORPHING
     if (newVisibility) {
       // Opening - Medium impact for "expansion"
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -283,7 +283,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
     
     setAttachmentButtonsVisible(newVisibility);
     
-    // 🚀 SMOOTHER SPRING ANIMATION
+    // SMOOTHER SPRING ANIMATION
     Animated.spring(attachmentButtonsAnim, {
       toValue: newVisibility ? 1 : 0,
       useNativeDriver: false,
@@ -348,12 +348,12 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
             inputRange: [0, 1],
             outputRange: [16, 0],
           }),
-          // 🚀 ELASTIC STRETCHING EFFECT
+          // ELASTIC STRETCHING EFFECT
           height: attachmentButtonsAnim.interpolate({
             inputRange: [0, 0.3, 1],
             outputRange: [68, 75, 68], // Slight stretch then back
           }),
-          // 🚀 SHADOW CONTINUITY FOR DEPTH ILLUSION
+          // SHADOW CONTINUITY FOR DEPTH ILLUSION
           shadowRadius: attachmentButtonsAnim.interpolate({
             inputRange: [0, 1],
             outputRange: [4, 12], // Deeper shadow when "expanded"
@@ -366,7 +366,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
             inputRange: [0, 1],
             outputRange: [2, 8], // Android shadow elevation
           }),
-          // 🚀 SUBTLE VERTICAL SHIFT - Creates "magnetic pull" effect
+          // SUBTLE VERTICAL SHIFT - Creates "magnetic pull" effect
           transform: [{
             translateY: attachmentButtonsAnim.interpolate({
               inputRange: [0, 0.4, 1],
@@ -387,7 +387,6 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
             <TextInput
               style={[
                 styles.textInput,
-                typography.textStyles.bodyMedium,
                 {
                   color: themeColors.text,
                 }
@@ -525,7 +524,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
             }),
             transform: [
               { scaleY: attachmentButtonsAnim },
-              // 🚀 SUBTLE UNFOLD ROTATION
+              // SUBTLE UNFOLD ROTATION
               { 
                 rotateX: attachmentButtonsAnim.interpolate({
                   inputRange: [0, 1],
@@ -715,7 +714,7 @@ const styles = StyleSheet.create({
     // Remove marginBottom for alignment
   },
   sendButton: {
-    width: 40,
+    width: 60,
     height: 40,
     borderRadius: 8,
     justifyContent: 'center',

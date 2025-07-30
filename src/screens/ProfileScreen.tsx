@@ -263,7 +263,7 @@ export const ProfileScreen: React.FC = () => {
             {/* Delete Profile Picture Button */}
             {profile.profilePicture && !uploading && (
               <TouchableOpacity 
-                style={[styles.deleteImageButton, { backgroundColor: colors.error || '#ff4757' }]}
+                style={[styles.deleteImageButton, { backgroundColor: '#ff4757' }]}
                 onPress={deleteProfilePicture}
               >
                 <Feather name="trash-2" size={16} color="white" />

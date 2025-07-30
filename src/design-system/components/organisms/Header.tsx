@@ -12,11 +12,9 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  Image,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import LottieView from 'lottie-react-native';
 import { designTokens, getThemeColors, getStandardBorder } from '../../tokens/colors';
 import { typography } from '../../tokens/typography';
 import { spacing } from '../../tokens/spacing';
@@ -38,7 +36,6 @@ interface HeaderProps {
   onTitlePress?: () => void;
   theme?: 'light' | 'dark';
   isVisible?: boolean;
-  isActive?: boolean;
   isMenuOpen?: boolean;
   style?: any;
 }
@@ -57,7 +54,6 @@ export const Header: React.FC<HeaderProps> = ({
   onTitlePress,
   theme = 'light',
   isVisible = true,
-  isActive = false,
   isMenuOpen = false,
   style,
 }) => {
@@ -192,8 +188,11 @@ export const Header: React.FC<HeaderProps> = ({
       ]}
     >
       <View style={styles.content}>
-        {/* Left Section */}
-        <View style={styles.leftSection}>
+        {/* Left spacer for symmetry */}
+        <View style={styles.leftSpacer} />
+        
+        {/* Center Section - Logo */}
+        <View style={styles.centerSection}>
           <TouchableOpacity
             style={styles.titleContainer}
             onPress={onTitlePress}
@@ -201,30 +200,13 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={!onTitlePress}
           >
             <View style={styles.titleRow}>
-              <View style={styles.titleWithCloudContainer}>
-                {/* Cloud icon positioned behind and offset to the left */}
-                <Image
-                  source={require('../../../../assets/icon.png')}
-                  style={[
-                    styles.backgroundCloudIcon,
-                    {
-                      shadowColor: theme === 'dark' ? '#000000' : '#666666',
-                      shadowOffset: { width: 0, height: theme === 'dark' ? 8 : 4 },
-                      shadowOpacity: theme === 'dark' ? 0.25 : 0.4,
-                      shadowRadius: theme === 'dark' ? 12 : 8,
-                    }
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              {isActive && (
-                <LottieView
-                  source={require('../../../../assets/GreenActiveIndicatorLottie.json')}
-                  autoPlay
-                  loop
-                  style={styles.activeIndicator}
-                />
-              )}
+              <Text style={[
+                styles.title,
+                typography.textStyles.headlineMedium,
+                { color: themeColors.text }
+              ]}>
+                {title}
+              </Text>
             </View>
             {subtitle && (
               <Text style={[
@@ -309,12 +291,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  leftSpacer: {
+    flex: 1,
+  },
+  centerSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   leftSection: {
     flex: 1,
     overflow: 'visible',
   },
   titleContainer: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     overflow: 'visible',
   },
   titleRow: {
@@ -327,47 +316,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.5,
   },
-  titleWithCloudContainer: {
-    position: 'relative',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    width: 200,
-    height: 30,
-    paddingLeft: 15,
-    paddingRight: 30,
-    overflow: 'visible',
-  },
-  backgroundCloudIcon: {
-    position: 'absolute',
-    left: 0,
-    top: -8,
-    width: 65,
-    height: 50,
-    opacity: 1,
-    zIndex: 0,
-  },
-  titleWithCloudBehind: {
-    position: 'relative',
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    fontSize: 24,
-    fontFamily: 'Nunito-Bold',
-    zIndex: 2,
-    textAlign: 'left',
-    marginTop: 0,
-    paddingLeft: 8,
-  },
-  activeIndicator: {
-    width: 22,
-    height: 22,
-  },
   subtitle: {
     marginTop: 2,
     opacity: 0.7,
   },
   rightSection: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: spacing[2],
   },
   iconButton: {

@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   arrow: {
     position: 'absolute',
     top: -8,
-    right: 16,
+    right: 31,
     width: 0,
     height: 0,
     borderLeftWidth: 8,

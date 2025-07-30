@@ -54,6 +54,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
 }) => {
   const themeColors = getThemeColors(theme);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [shouldRender, setShouldRender] = useState(visible);
   const metricColor = designTokens.semantic[color];
   
   // Main modal animations
@@ -170,6 +171,19 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
     });
   }, [isAnimating, resetAnimations]);
 
+  // Effect to handle render state timing
+  useEffect(() => {
+    if (visible) {
+      setShouldRender(true);
+    } else {
+      // Delay unmounting to allow exit animation to complete
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 200); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
   // Effect to handle visibility changes
   useEffect(() => {
     if (visible) {
@@ -237,12 +251,12 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
     return iconMap[metric.title] || 'chart-bar';
   };
 
-  if (!visible || !metric) return null;
+  if (!shouldRender || !metric) return null;
 
   return (
     <Modal
       transparent
-      visible={visible}
+      visible={shouldRender}
       statusBarTranslucent
       animationType="none"
     >

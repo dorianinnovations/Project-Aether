@@ -1137,7 +1137,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   styles.modalMessage,
                   { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
                 ]}>
-                  ✅ Database confirmed: All conversation history deleted
+                   Database confirmed: All conversation history deleted
                 </Text>
                 
                 <View style={{ height: 68, marginTop: 24 }} />
@@ -1161,7 +1161,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   styles.modalMessage,
                   { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
                 ]}>
-                  ❌ Database error: Failed to delete conversations
+                   Database error: Failed to delete conversations
                 </Text>
                 
                 <TouchableOpacity
@@ -1328,7 +1328,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   styles.modalMessage,
                   { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
                 ]}>
-                  ✅ Database confirmed: Conversation permanently deleted
+                   Database confirmed: Conversation permanently deleted
                 </Text>
                 
                 <View style={{ height: 68, marginTop: 24 }} />
@@ -1352,7 +1352,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   styles.modalMessage,
                   { color: theme === 'dark' ? '#d1d5db' : '#6b7280' }
                 ]}>
-                  ❌ Database error: Failed to delete conversation
+                   Database error: Failed to delete conversation
                 </Text>
                 
                 <TouchableOpacity

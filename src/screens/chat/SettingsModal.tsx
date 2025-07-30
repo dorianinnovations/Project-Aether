@@ -3,7 +3,7 @@
  * Beautiful glassmorphic settings panel with brick-style buttons
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,9 +16,12 @@ import {
   Alert,
   Share,
   Linking,
+  Animated,
+  Easing,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
+import { Feather } from '@expo/vector-icons';
 
 // Design System
 import { designTokens, getThemeColors, getBorderStyle, getIconColor } from '../../design-system/tokens/colors';
@@ -34,6 +37,9 @@ import { useTheme } from '../../contexts/ThemeContext';
 // Services
 import { AuthAPI, TokenManager, UserAPI, ConversationAPI } from '../../services/api';
 import SettingsStorage from '../../services/settingsStorage';
+
+// Components
+import { SignOutModal } from '../../design-system/components/organisms/SignOutModal';
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -61,10 +67,94 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
-  const [colorfulBubblesEnabled, setColorfulBubblesEnabled] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeSubDrawer, setActiveSubDrawer] = useState<string | null>(null);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  
+  // Animation refs
+  const subDrawerAnim = useRef(new Animated.Value(0)).current;
+  const mainContentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Staggered animation refs for settings modal
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const accountSectionOpacity = useRef(new Animated.Value(0)).current;
+  const categoriesSectionOpacity = useRef(new Animated.Value(0)).current;
+  const quickActionsOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Sub-drawer animation refs
+  const subDrawerHeaderOpacity = useRef(new Animated.Value(0)).current;
+  const subDrawerItemsOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Timeout refs for cleanup
+  const animationTimeouts = useRef<NodeJS.Timeout[]>([]).current;
+
+  // Rainbow pastel icon colors (same as HeaderMenu)
+  const getSettingsIconColor = (index: number): string => {
+    const colors = [
+      '#FF6B9D', // Pink
+      '#C44569', // Dark Pink  
+      '#F8B500', // Orange
+      '#F39801', // Dark Orange
+      '#05C46B', // Green
+      '#00A8CC', // Teal
+      '#0066CC', // Blue
+      '#574B90', // Purple
+      '#8E44AD', // Dark Purple
+      '#6C5CE7', // Light Purple
+      '#FF5722', // Red Orange
+      '#9C27B0', // Purple
+      '#673AB7', // Deep Purple
+      '#3F51B5', // Indigo
+      '#2196F3', // Blue
+      '#00BCD4', // Cyan
+      '#009688', // Teal
+      '#4CAF50', // Green
+      '#8BC34A', // Light Green
+      '#CDDC39', // Lime
+      '#FFEB3B', // Yellow
+      '#FFC107', // Amber
+      '#FF9800', // Orange
+      '#FF5722', // Deep Orange
+    ];
+    return colors[index % colors.length];
+  };
+
+  // Sub-drawer sections
+  const subDrawerSections = {
+    appearance: {
+      title: 'Appearance',
+      icon: 'palette',
+      description: 'Theme, animations, text size',
+      items: [
+        { key: 'theme', label: 'Dark Mode', value: theme === 'dark', type: 'switch' },
+        { key: 'animations', label: 'Animations', value: animationsEnabled, type: 'switch' },
+        { key: 'textSize', label: 'Text Size', value: textSize, type: 'slider', min: 12, max: 24 },
+      ]
+    },
+    notifications: {
+      title: 'Notifications',
+      icon: 'bell',
+      description: 'Push alerts, sounds, haptics',
+      items: [
+        { key: 'notifications', label: 'Push Notifications', value: notificationsEnabled, type: 'switch' },
+        { key: 'sound', label: 'Sound Effects', value: soundEnabled, type: 'switch' },
+        { key: 'haptics', label: 'Haptic Feedback', value: hapticsEnabled, type: 'switch' },
+      ]
+    },
+    privacy: {
+      title: 'Privacy & Data',
+      icon: 'shield',
+      description: 'Analytics, backups, data control',
+      items: [
+        { key: 'analytics', label: 'Analytics', value: analyticsEnabled, type: 'switch' },
+        { key: 'autoSave', label: 'Auto-Save Chats', value: autoSaveEnabled, type: 'switch' },
+        { key: 'exportData', label: 'Export Data', type: 'action' },
+        { key: 'clearData', label: 'Clear All Data', type: 'action', destructive: true },
+      ]
+    },
+  };
   
   
   const glassmorphicOverlay = getGlassmorphicStyle('overlay', theme);
@@ -77,6 +167,99 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     checkAuthState();
   }, []);
 
+  // Cleanup animation timeouts on unmount
+  useEffect(() => {
+    return () => {
+      animationTimeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, []);
+
+  // Animate modal content in when visible
+  useEffect(() => {
+    if (visible) {
+      // Haptic feedback when modal opens
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      animateModalSequence();
+    } else {
+      // Reset all animations when modal is hidden
+      headerOpacity.setValue(0);
+      accountSectionOpacity.setValue(0);
+      categoriesSectionOpacity.setValue(0);
+      quickActionsOpacity.setValue(0);
+    }
+  }, [visible]);
+
+  // Animate sub-drawer content when opened
+  useEffect(() => {
+    if (activeSubDrawer) {
+      animateSubDrawerSequence();
+    } else {
+      // Reset sub-drawer animations
+      subDrawerHeaderOpacity.setValue(0);
+      subDrawerItemsOpacity.setValue(0);
+    }
+  }, [activeSubDrawer]);
+
+  // Staggered animation sequence for main modal
+  const animateModalSequence = () => {
+    // Header first (100ms delay)
+    setTimeout(() => {
+      Animated.timing(headerOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, 100);
+
+    // Account section (200ms delay)
+    setTimeout(() => {
+      Animated.timing(accountSectionOpacity, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }).start();
+    }, 200);
+
+    // Categories section (300ms delay)
+    setTimeout(() => {
+      Animated.timing(categoriesSectionOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    }, 300);
+
+    // Quick actions (450ms delay)
+    setTimeout(() => {
+      Animated.timing(quickActionsOpacity, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }).start();
+    }, 450);
+  };
+
+  // Staggered animation sequence for sub-drawer
+  const animateSubDrawerSequence = () => {
+    // Header first (50ms delay)
+    setTimeout(() => {
+      Animated.timing(subDrawerHeaderOpacity, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }).start();
+    }, 50);
+
+    // Items second (150ms delay)
+    setTimeout(() => {
+      Animated.timing(subDrawerItemsOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, 150);
+  };
+
   const loadSettings = async () => {
     try {
       const settings = await SettingsStorage.getAllSettings();
@@ -87,7 +270,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setAutoSaveEnabled(settings.autoSaveEnabled);
       setSoundEnabled(settings.soundEnabled);
       setHapticsEnabled(settings.hapticsEnabled);
-      setColorfulBubblesEnabled(settings.colorfulBubblesEnabled);
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -112,13 +294,55 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setActiveSubDrawer(null);
     onClose();
+  };
+
+  // Sub-drawer animations
+  const openSubDrawer = (section: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setActiveSubDrawer(section);
+    Animated.parallel([
+      Animated.timing(mainContentAnim, {
+        toValue: -screenWidth * 0.2,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(subDrawerAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closeSubDrawer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Animated.parallel([
+      Animated.timing(mainContentAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(subDrawerAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setActiveSubDrawer(null);
+    });
   };
 
   const handleTextSizeChange = async (value: number) => {
     setTextSize(value);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Add micro haptics for slider movement
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
     try {
       await SettingsStorage.setSetting('textSize', value);
     } catch (error) {
@@ -156,53 +380,64 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           setHapticsEnabled(value);
           await SettingsStorage.setSetting('hapticsEnabled', value);
           break;
-        case 'colorfulBubbles':
-          setColorfulBubblesEnabled(value);
-          await SettingsStorage.setSetting('colorfulBubblesEnabled', value);
-          break;
       }
     } catch (error) {
       console.error(`Failed to save ${setting} setting:`, error);
     }
   };
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out? You\'ll lose access to your conversation history and personalized features.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              await AuthAPI.logout();
-              setIsSignedIn(false);
-              setUserData(null);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              
-              // Navigate to Hero landing screen
-              if (navigation) {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Auth' }],
-                });
-              } else {
-                onSignOut?.();
-              }
-              onClose();
-            } catch (error) {
-              console.error('Sign out error:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
-          }
+  // Handle sub-drawer item interactions
+  const handleSubDrawerItem = async (section: string, item: any) => {
+    switch (item.type) {
+      case 'switch':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (item.key === 'theme') {
+          handleThemeToggle();
+        } else {
+          await handleAdvancedSetting(item.key, !item.value);
         }
-      ]
-    );
+        break;
+      case 'action':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        if (item.key === 'exportData') {
+          handleDataExport();
+        } else if (item.key === 'clearData') {
+          handleClearData();
+        }
+        break;
+    }
+  };
+
+  const handleSignOut = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setShowSignOutModal(true);
+  };
+
+  const handleSignOutConfirm = async () => {
+    try {
+      setIsLoading(true);
+      await AuthAPI.logout();
+      setIsSignedIn(false);
+      setUserData(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Navigate to Hero landing screen
+      if (navigation) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Auth' }],
+        });
+      } else {
+        onSignOut?.();
+      }
+      onClose();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setShowSignOutModal(false);
+    }
   };
 
   const handleDataExport = async () => {
@@ -268,72 +503,145 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     );
   };
 
-  // Varied icon colors for better visibility
-  const getIconColorForIndex = (index: number) => {
-    const iconNames = ['profile', 'chat', 'insights', 'connections', 'settings', 'help', 'notifications', 'search', 'menu', 'back', 'close', 'home'];
-    return getIconColor(iconNames[index % iconNames.length] as any, theme);
-  };
-
-  // More visible icon backgrounds
-  const getIconBackground = (index: number) => {
-    const pastels = [
-      designTokens.pastels.pink,
-      designTokens.pastels.cyan, 
-      designTokens.pastels.mint,
-      designTokens.pastels.orange,
-      designTokens.pastels.purple,
-      designTokens.pastels.coral,
-    ];
-    return theme === 'light' 
-      ? `${pastels[index % pastels.length]}40` // 40% opacity for light mode
-      : `${pastels[index % pastels.length]}60`; // 60% opacity for dark mode
-  };
-
-  const renderBrickButton = (
-    title: string,
-    subtitle: string,
-    iconName: string,
-    onPress?: () => void,
-    rightElement?: React.ReactNode,
-    iconIndex: number = 0
-  ) => (
-    <TouchableOpacity
-      style={[
-        styles.brickButton, 
-        brickStyle, 
-        { borderColor: colors.borders.default }
-      ]}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress?.();
-      }}
-      activeOpacity={0.8}
-    >
-      <View style={[
-        styles.brickIcon, 
-        { backgroundColor: getIconBackground(iconIndex) }
-      ]}>
-        <Icon 
-          name={iconName as any} 
-          size="md" 
-          color={colorPatterns.text.primary(theme)} // Using consolidated color pattern
-        />
-      </View>
-      <View style={styles.brickContent}>
-        <Text style={[styles.brickTitle, { color: colors.text }]}>
-          {title}
-        </Text>
-        <Text style={[styles.brickSubtitle, { color: colors.textMuted }]}>
-          {subtitle}
-        </Text>
-      </View>
-      {rightElement && (
-        <View style={styles.brickRight}>
-          {rightElement}
+  // Render main settings item
+  const renderSettingsItem = (section: string, index: number) => {
+    const sectionData = subDrawerSections[section as keyof typeof subDrawerSections];
+    const itemColor = getSettingsIconColor(index);
+    return (
+      <TouchableOpacity
+        key={section}
+        style={[
+          styles.settingsItem, 
+          { 
+            borderColor: `${itemColor}30`,
+            backgroundColor: `${itemColor}08`
+          }
+        ]}
+        onPress={() => openSubDrawer(section)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.settingsIcon, { backgroundColor: `${itemColor}20` }]}>
+          <Feather name={sectionData.icon as any} size={20} color={itemColor} />
         </View>
-      )}
-    </TouchableOpacity>
-  );
+        <View style={styles.settingsContent}>
+          <Text style={[styles.settingsTitle, { color: colors.text }]}>
+            {sectionData.title}
+          </Text>
+          <Text style={[styles.settingsSubtitle, { color: colors.textMuted }]}>
+            {sectionData.description}
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={itemColor} />
+      </TouchableOpacity>
+    );
+  };
+
+  // Render sub-drawer
+  const renderSubDrawer = () => {
+    if (!activeSubDrawer) return null;
+    
+    const sectionData = subDrawerSections[activeSubDrawer as keyof typeof subDrawerSections];
+    const translateX = subDrawerAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [screenWidth, 0],
+    });
+
+    return (
+      <Animated.View 
+        style={[
+          styles.subDrawer, 
+          { 
+            backgroundColor: theme === 'dark' ? '#1a1a1a' : colors.surface,
+            borderColor: colors.borders.default,
+            transform: [{ translateX }] 
+          }
+        ]}
+      >
+        <Animated.View style={[
+          styles.subDrawerHeader, 
+          { 
+            borderBottomColor: colors.borders.default,
+            opacity: subDrawerHeaderOpacity 
+          }
+        ]}>
+          <TouchableOpacity onPress={closeSubDrawer} style={styles.backButton}>
+            <Feather name="arrow-left" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.subDrawerTitle, { color: colors.text }]}>
+            {sectionData.title}
+          </Text>
+        </Animated.View>
+        
+        <Animated.ScrollView 
+          style={[styles.subDrawerContent, { opacity: subDrawerItemsOpacity }]}
+          contentContainerStyle={{ paddingBottom: spacing[6] }}
+          showsVerticalScrollIndicator={false}
+        >
+          {sectionData.items.map((item, index) => {
+            const itemColor = getSettingsIconColor(index + 12); // Offset to get different colors
+            return (
+              <View key={item.key} style={[
+                styles.subDrawerItem, 
+                { 
+                  borderColor: `${itemColor}30`,
+                  backgroundColor: `${itemColor}08`
+                }
+              ]}>
+                <View style={styles.subDrawerItemContent}>
+                  <Text style={[styles.subDrawerItemLabel, { color: colors.text }]}>
+                    {item.label}
+                  </Text>
+                  {item.type === 'switch' && (
+                    <Switch
+                      value={item.value as boolean}
+                      onValueChange={(value) => handleSubDrawerItem(activeSubDrawer, { ...item, value: !item.value })}
+                      trackColor={{ false: colors.surfaces.sunken, true: itemColor }}
+                      thumbColor={colors.surface}
+                    />
+                  )}
+                  {item.type === 'slider' && (
+                    <View style={styles.sliderContainer}>
+                      <Slider
+                        style={styles.slider}
+                        minimumValue={(item as any).min}
+                        maximumValue={(item as any).max}
+                        value={item.value as number}
+                        onValueChange={handleTextSizeChange}
+                        minimumTrackTintColor={itemColor}
+                        maximumTrackTintColor={colors.surfaces.sunken}
+                        thumbTintColor={itemColor}
+                      />
+                      <Text style={[styles.sliderValue, { color: colors.textMuted }]}>
+                        {Math.round(item.value as number)}px
+                      </Text>
+                    </View>
+                  )}
+                  {item.type === 'action' && (
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        (item as any).destructive 
+                          ? { backgroundColor: '#ff4757' }
+                          : { backgroundColor: `${itemColor}20` }
+                      ]}
+                      onPress={() => handleSubDrawerItem(activeSubDrawer, item)}
+                    >
+                      <Text style={[
+                        styles.actionButtonText,
+                        { color: (item as any).destructive ? 'white' : itemColor }
+                      ]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </Animated.ScrollView>
+      </Animated.View>
+    );
+  };
 
   return (
     <Modal
@@ -349,9 +657,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           activeOpacity={1}
         />
         
-        <View style={[styles.modalContainer, glassmorphicOverlay, { borderColor: colors.borders.default }]}>
+        <Animated.View style={[
+          styles.modalContainer, 
+          { 
+            backgroundColor: theme === 'dark' ? '#1a1a1a' : colors.surface,
+            transform: [{ translateX: mainContentAnim }]
+          }
+        ]}>
           {/* Header */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.borders.default }]}>
+          <Animated.View style={[
+            styles.modalHeader, 
+            { 
+              borderBottomColor: colors.borders.default,
+              opacity: headerOpacity 
+            }
+          ]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Settings
             </Text>
@@ -359,14 +679,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               style={styles.closeButton}
               onPress={handleClose}
             >
-              <Icon 
-                name="x" 
-                size="md" 
-                color="muted" 
-                theme={theme}
-              />
+              <Feather name="x" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
           {/* Settings Content */}
           <ScrollView 
@@ -375,293 +690,106 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {/* Account Section - Show first if signed in */}
             {isSignedIn && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Account
-                </Text>
-                
-                {renderBrickButton(
-                  userData?.email || 'Profile',
-                  'Manage your account settings',
-                  'user',
-                  undefined,
-                  <TouchableOpacity
-                    style={styles.signOutIcon}
-                    onPress={handleSignOut}
-                    activeOpacity={0.7}
-                  >
-                    <Icon 
-                      name="log-out" 
-                      size="sm" 
-                      color="menu"
-                      theme={theme}
-                    />
-                  </TouchableOpacity>,
-                  0
-                )}
-              </View>
+              <Animated.View style={[styles.accountSection, { opacity: accountSectionOpacity }]}>
+                <TouchableOpacity style={[styles.accountItem, { borderColor: colors.borders.default }]}>
+                  <View style={[styles.accountIcon, { backgroundColor: `${getSettingsIconColor(0)}20` }]}>
+                    <Feather name="user" size={20} color={getSettingsIconColor(0)} />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={[styles.accountEmail, { color: colors.text }]}>
+                      {userData?.email || 'Account'}
+                    </Text>
+                    <Text style={[styles.accountStatus, { color: colors.textMuted }]}>
+                      Signed in
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
+                    <Feather name="log-out" size={16} color="#ff4757" />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </Animated.View>
             )}
 
-            {/* Appearance Section */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Appearance
-              </Text>
-              
-              {renderBrickButton(
-                'Dark Mode',
-                `Currently ${theme === 'dark' ? 'enabled' : 'disabled'}`,
-                theme === 'dark' ? 'moon' : 'sun',
-                undefined,
-                <Switch
-                  value={theme === 'dark'}
-                  onValueChange={handleThemeToggle}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={theme === 'dark' ? designTokens.text.primaryDark : colors.surface}
-                />
+            {/* Main Settings Categories */}
+            <Animated.View style={[styles.categoriesSection, { opacity: categoriesSectionOpacity }]}>
+              {Object.keys(subDrawerSections).map((section, index) => 
+                renderSettingsItem(section, index)
               )}
-              
-              {/* Colorful User Bubbles Toggle */}
-              {renderBrickButton(
-                'Colorful Chat Bubbles',
-                'Enable fun cycling colors for your messages',
-                'palette',
-                undefined,
-                <Switch
-                  value={colorfulBubblesEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('colorfulBubbles', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={colorfulBubblesEnabled ? designTokens.text.primaryDark : colors.surface}
-                />,
-                1
-              )}
-              
-              {renderBrickButton(
-                'Chat Animations',
-                'Smooth typing and entrance effects',
-                'zap',
-                undefined,
-                <Switch
-                  value={animationsEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('animations', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={animationsEnabled ? designTokens.text.primaryDark : colors.surface}
-                />
-              )}
-            </View>
+            </Animated.View>
 
-
-            {/* Functionality Section */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Functionality
-              </Text>
+            {/* Quick Actions */}
+            <Animated.View style={[styles.quickActionsSection, { opacity: quickActionsOpacity }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
               
-              {renderBrickButton(
-                'Notifications',
-                'App alerts and message updates',
-                'bell',
-                undefined,
-                <Switch
-                  value={notificationsEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('notifications', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={notificationsEnabled ? designTokens.text.primaryDark : colors.surface}
-                />,
-                0
-              )}
-
-              {renderBrickButton(
-                'Auto-Save Chats',
-                'Automatically save conversation history',
-                'save',
-                undefined,
-                <Switch
-                  value={autoSaveEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('autoSave', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={autoSaveEnabled ? designTokens.text.primaryDark : colors.surface}
-                />,
-                1
-              )}
-
-              {renderBrickButton(
-                'Sound Effects',
-                'Audio feedback for interactions',
-                'volume-2',
-                undefined,
-                <Switch
-                  value={soundEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('sound', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={soundEnabled ? designTokens.text.primaryDark : colors.surface}
-                />,
-                2
-              )}
-
-              {renderBrickButton(
-                'Haptic Feedback',
-                'Touch vibration responses',
-                'smartphone',
-                undefined,
-                <Switch
-                  value={hapticsEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('haptics', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={hapticsEnabled ? designTokens.text.primaryDark : colors.surface}
-                />,
-                3
-              )}
+              <TouchableOpacity 
+                style={[styles.quickAction, { 
+                  borderColor: `${getSettingsIconColor(10)}30`,
+                  backgroundColor: `${getSettingsIconColor(10)}08`
+                }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  // TODO: Navigate to help & support screen
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: `${getSettingsIconColor(10)}20` }]}>
+                  <Feather name="help-circle" size={18} color={getSettingsIconColor(10)} />
+                </View>
+                <Text style={[styles.quickActionText, { color: colors.text }]}>Help & Support</Text>
+              </TouchableOpacity>
               
-              {renderBrickButton(
-                'Analytics & Learning',
-                'Help improve Numina with usage data',
-                'activity',
-                undefined,
-                <Switch
-                  value={analyticsEnabled}
-                  onValueChange={(value) => handleAdvancedSetting('analytics', value)}
-                  trackColor={{ 
-                    false: colors.surfaces.sunken, 
-                    true: colors.primary 
-                  }}
-                  thumbColor={analyticsEnabled ? designTokens.text.primaryDark : colors.surface}
-                />,
-                4
-              )}
-            </View>
-
-            {/* Privacy & Data Section */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Privacy & Data
-              </Text>
-              
-              {renderBrickButton(
-                'Export Settings',
-                'Download your app preferences',
-                'download',
-                handleDataExport,
-                undefined,
-                0
-              )}
-              
-              {renderBrickButton(
-                'Privacy Policy',
-                'View our privacy practices',
-                'shield',
-                () => Linking.openURL('https://aether.com/privacy'),
-                undefined,
-                1
-              )}
-              
-              {renderBrickButton(
-                'Terms of Service',
-                'Review terms and conditions',
-                'file-text',
-                () => Linking.openURL('https://aether.com/terms'),
-                undefined,
-                2
-              )}
-              
-              {renderBrickButton(
-                'Reset Settings',
-                'Restore default preferences',
-                'refresh-cw',
-                () => Alert.alert(
-                  'Reset Settings',
-                  'This will restore all settings to their default values. Continue?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { 
-                      text: 'Reset', 
-                      style: 'destructive',
-                      onPress: async () => {
-                        try {
-                          await SettingsStorage.resetSettings();
-                          await loadSettings();
-                          Alert.alert('Success', 'Settings have been reset to defaults.');
-                        } catch (error) {
-                          Alert.alert('Error', 'Failed to reset settings.');
-                        }
-                      }
-                    }
-                  ]
-                ),
-                undefined,
-                3
-              )}
-              
-              {renderBrickButton(
-                'Clear All Data',
-                'Delete all conversations and preferences',
-                'trash-2',
-                handleClearData,
-                undefined,
-                4
-              )}
-            </View>
-
-            {/* Help & Support Section */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Help & Support
-              </Text>
-              
-              {renderBrickButton(
-                'Help Center',
-                'Get answers to common questions',
-                'help-circle',
-                () => Linking.openURL('https://aether.com/help'),
-                undefined,
-                0
-              )}
-              
-              {renderBrickButton(
-                'Send Feedback',
-                'Report issues or suggest features',
-                'message-square',
-                () => Linking.openURL('mailto:support@numina.com?subject=Numina Mobile Feedback'),
-                undefined,
-                1
-              )}
-              
-              {renderBrickButton(
-                'App Version',
-                'v1.0.0 (Build 100)',
-                'info',
-                () => Alert.alert(
-                  'App Information',
-                  'Numina Mobile v1.0.0\nBuild 100\n\nDeveloped by the Numina Team\n© 2024 Numina Technologies'
-                ),
-                undefined,
-                2
-              )}
-            </View>
+              <TouchableOpacity 
+                style={[styles.quickAction, { 
+                  borderColor: `${getSettingsIconColor(11)}30`,
+                  backgroundColor: `${getSettingsIconColor(11)}08`
+                }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  // TODO: Navigate to about screen
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: `${getSettingsIconColor(11)}20` }]}>
+                  <Feather name="info" size={18} color={getSettingsIconColor(11)} />
+                </View>
+                <Text style={[styles.quickActionText, { color: colors.text }]}>About Numina</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </ScrollView>
-        </View>
+          
+          {/* Overlay when submenu is active */}
+          {activeSubDrawer && (
+            <Animated.View
+              style={[
+                styles.mainContentOverlay,
+                {
+                  opacity: subDrawerAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.8],
+                  }),
+                }
+              ]}
+            >
+              <TouchableOpacity
+                style={StyleSheet.absoluteFillObject}
+                activeOpacity={1}
+                onPress={closeSubDrawer}
+              />
+            </Animated.View>
+          )}
+        </Animated.View>
+
+        {/* Sub-drawer */}
+        {renderSubDrawer()}
       </View>
+
+      {/* Sign Out Modal */}
+      <SignOutModal
+        visible={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        onConfirm={handleSignOutConfirm}
+        theme={theme}
+      />
     </Modal>
   );
 };
@@ -669,7 +797,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing[2],
@@ -684,132 +812,234 @@ const styles = StyleSheet.create({
   },
   
   modalContainer: {
-    width: screenWidth * 0.95,
-    maxHeight: screenHeight * 0.92,
-    minHeight: screenHeight * 0.75,
-    borderRadius: 10, // Reduced roundness from 24
+    width: screenWidth,
+    height: screenHeight,
     padding: spacing[4],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 12,
-    borderWidth: 1,
+    paddingTop: 60, // Account for status bar/notch
   },
   
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingBottom: spacing[4],
     marginBottom: spacing[4],
-    paddingBottom: spacing[2],
     borderBottomWidth: 1,
   },
   modalTitle: {
-    ...typography.textStyles.headlineLarge,
+    fontFamily: typography.fonts.body,
     fontWeight: '700',
     fontSize: 22,
   },
   closeButton: {
     padding: spacing[2],
-    borderRadius: 10, // Reduced roundness from 12
+    borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeIcon: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
   
   settingsContent: {
     flex: 1,
   },
   
-  section: {
-    marginBottom: spacing[3],
-  },
-  sectionTitle: {
-    ...typography.textStyles.headlineSmall,
-    fontWeight: '700',
-    fontSize: 16,
-    marginBottom: spacing[1],
-    marginLeft: spacing[1],
-    opacity: 0.9,
+  mainContentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   
-  // Brick Buttons
-  brickButton: {
+  // Account Section
+  accountSection: {
+    marginBottom: spacing[4],
+  },
+  accountItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[2],
-    borderRadius: 10, // Reduced roundness from 12
-    marginBottom: spacing[1],
-    minHeight: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    padding: spacing[3],
+    borderRadius: 12,
     borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  accountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing[3],
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  accountEmail: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.base,
+    fontWeight: '600',
+  },
+  accountStatus: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.sm,
+    marginTop: 2,
+  },
+  signOutButton: {
+    padding: spacing[2],
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 71, 87, 0.1)',
   },
   
-  brickIcon: {
+  // Categories Section
+  categoriesSection: {
+    marginBottom: spacing[4],
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing[3],
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: spacing[2],
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  },
+  settingsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing[3],
+  },
+  settingsTitle: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.base,
+    fontWeight: '600',
+  },
+  settingsSubtitle: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.sm,
+    marginTop: 2,
+  },
+  
+  // Sub-drawer
+  subDrawer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: screenWidth * 0.78,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  subDrawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing[4],
+    paddingTop: 62.5, // Fine-tuned alignment with main modal
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: spacing[2],
+    marginRight: spacing[3],
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  subDrawerTitle: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.xl,
+    fontWeight: '600',
+  },
+  subDrawerContent: {
+    flex: 1,
+    padding: spacing[4],
+  },
+  subDrawerItem: {
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[3],
+    borderBottomWidth: 1,
+    marginHorizontal: 0,
+    borderRadius: 12,
+    marginBottom: spacing[3],
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  subDrawerItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  subDrawerItemLabel: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.base,
+    fontWeight: '500',
+    flex: 1,
+  },
+  
+  // Slider
+  sliderContainer: {
+    width: 120,
+    alignItems: 'center',
+  },
+  slider: {
+    width: 100,
+    height: 20,
+  },
+  sliderValue: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.sm,
+    marginTop: spacing[1],
+  },
+  
+  // Action Button
+  actionButton: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.base,
+    fontWeight: '600',
+  },
+  
+  // Quick Actions
+  quickActionsSection: {
+    marginTop: spacing[2],
+  },
+  sectionTitle: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.lg,
+    fontWeight: '600',
+    marginBottom: spacing[3],
+  },
+  quickAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing[3],
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: spacing[2],
+  },
+  quickActionIcon: {
     width: 32,
     height: 32,
-    borderRadius: 6, // Reduced roundness from 8
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing[2],
-    shadowColor: 'rgba(255, 179, 230, 0.3)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  iconText: {
-    fontSize: 16,
-  },
-  
-  brickContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  brickTitle: {
-    ...typography.textStyles.headlineSmall,
-    fontWeight: '700',
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  brickSubtitle: {
-    ...typography.textStyles.bodyMedium,
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  
-  brickRight: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  quickActionText: {
+    fontFamily: typography.fonts.body,
+    fontSize: typography.scale.base,
     marginLeft: spacing[3],
   },
-  
-  // Text Size Slider
-  slider: {
-    marginTop: spacing[2],
-    height: 36,
-    flex: 1,
-  },
-  
-  // Sign Out Icon
-  signOutIcon: {
-    padding: spacing[1],
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
 });
 
 export default SettingsModal;

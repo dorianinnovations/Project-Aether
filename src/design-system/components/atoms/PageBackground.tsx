@@ -27,7 +27,7 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
 }) => {
   const themeColors = getThemeColors(theme);
 
-  // The dreamy baby blue gradient colors - brighter (closer to white)! 💙✨
+  // The dreamy baby blue gradient colors - brighter (closer to white)!
   const dreamyGradientColors = ['#ffffff', '#f2f8ff', '#e2f0ff', '#eaf4ff', '#f4faff'];
   
   // Consistent dark grey background

@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Storage Keys mapping from camelCase to storage key
 const SETTINGS_KEYS = {
   TEXTSIZE: '@numina_text_size',
-  THEMEVARIANT: '@numina_theme_variant', 
+  THEMEVARIANT: '@numina_theme_variant',
+  DARKMODE: '@numina_dark_mode',
   NOTIFICATIONSENABLED: '@numina_notifications',
   ANIMATIONSENABLED: '@numina_animations',
   ANALYTICSENABLED: '@numina_analytics',
@@ -24,6 +25,7 @@ const SETTINGS_KEYS = {
 export const DEFAULT_SETTINGS = {
   textSize: 16,
   themeVariant: 'default',
+  darkMode: false,
   notificationsEnabled: true,
   animationsEnabled: true,
   analyticsEnabled: true,

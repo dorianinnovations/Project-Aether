@@ -30,9 +30,13 @@ module.exports = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.config.js' }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|expo|@expo|@react-navigation|react-native-reanimated|lottie-react-native|@react-native-async-storage|react-native-gesture-handler)/)'
+    'node_modules/(?!(react-native|@react-native|expo|@expo|@react-navigation|react-native-reanimated|lottie-react-native|@react-native-async-storage|react-native-gesture-handler|react-native-screens|react-native-safe-area-context|react-native-vector-icons|@react-native-masked-view|react-native-pager-view|@react-native-community|expo-.*)/)'
   ],
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
+  testTimeout: 10000,
+  maxWorkers: 1,
+  forceExit: true,
+  detectOpenHandles: true,
 };

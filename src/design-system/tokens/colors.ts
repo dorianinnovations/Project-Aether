@@ -42,7 +42,7 @@ export const designTokens = {
     wisdom: '#E1BEE7',         // Pastel purple - insights, intelligence
   },
 
-  // Vibrant Dark Mode Semantic Colors - Much more visible! 🌟
+  // Vibrant Dark Mode Semantic Colors - Much more visible!
   semanticDark: {
     success: '#7DCE82',        // Bright green - achievements, growth
     error: '#FF6B9D',          // Bright coral - errors, warnings  
@@ -273,22 +273,25 @@ export const getUserMessageColor = (messageIndex: number, theme: 'light' | 'dark
   return getCyclingPastelColor(messageIndex, theme);
 };
 
-// Bright Rainbow Pastel Icon Color System
+// Bright Pastel Icon Color System - Sequence: Red > Orange > Yellow > Green > Blue > Purple > Pink
 export const iconColors = {
-  // Menu icons with bright rainbow pastels
+  // Menu icons in pastel bright color sequence
+  profile: '#FF6B6B',     // Bright red (first)
+  chat: '#FFB347',        // Bright orange (second)
+  insights: '#FFE066',    // Bright yellow (third)
+  connections: '#6AE86F', // Bright green (fourth)
+  settings: '#5CC7E8',    // Bright blue (fifth)
+  theme_toggle: '#C95FD6', // Bright purple (sixth)
+  signout: '#FF8FA3',     // Bright pink (seventh)
+  
+  // Additional icons maintaining the color sequence
   home: '#4FB3D9',        // Bright sky blue
-  chat: '#5FD068',        // Bright mint green  
-  profile: '#B84FC7',     // Bright purple
-  connections: '#FF7A85', // Bright coral
-  insights: '#42E8DB',    // Bright cyan
-  settings: '#95D982',    // Bright sage green
   help: '#FFD54F',        // Bright sunny yellow
   notifications: '#FF8A95', // Bright rose
   search: '#7FDBCA',      // Bright mint
   menu: '#FFA726',        // Bright orange
   back: '#F48FB1',        // Bright pink
   close: '#FF8A65',       // Bright peach
-  signout: '#FF5252',     // Bright red for sign out action
 };
 
 
@@ -298,21 +301,25 @@ export const getIconColor = (iconName: keyof typeof iconColors, theme: 'light' |
   
   // In dark mode, use even more vibrant versions
   if (theme === 'dark') {
-    // Map bright icons to extra vibrant dark mode versions
+    // Map bright icons to extra vibrant dark mode versions - following color sequence
     const colorMapping: Record<string, string> = {
+      // Main menu icons (in sequence order)
+      '#FF6B6B': '#FF7B7B',    // Even brighter red (profile)
+      '#FFB347': '#FFD670',    // Even brighter orange (chat)
+      '#FFE066': '#FFF080',    // Even brighter yellow (insights)
+      '#6AE86F': '#7EF583',    // Even brighter green (connections)
+      '#5CC7E8': '#70D4F5',    // Even brighter blue (settings)
+      '#C95FD6': '#D670E3',    // Even brighter purple (theme_toggle)
+      '#FF8FA3': '#FFA3B7',    // Even brighter pink (signout)
+      
+      // Additional icons
       '#4FB3D9': '#5CC7E8',    // Even brighter sky blue
-      '#5FD068': '#6AE86F',    // Even brighter mint green
-      '#B84FC7': '#C95FD6',    // Even brighter purple
-      '#FF7A85': '#FF8A95',    // Even brighter coral
-      '#42E8DB': '#4EF5E6',    // Even brighter cyan
-      '#95D982': '#A5E690',    // Even brighter sage
       '#FFD54F': '#FFE066',    // Even brighter yellow
       '#FF8A95': '#FFA0AB',    // Even brighter rose
       '#7FDBCA': '#8FE8D7',    // Even brighter mint
       '#FFA726': '#FFB74D',    // Even brighter orange
       '#F48FB1': '#FF9FC7',    // Even brighter pink
       '#FF8A65': '#FF9A7A',    // Even brighter peach
-      '#FF5252': '#FF6B6B',    // Even brighter red for sign out
     };
     
     return colorMapping[baseColor] || '#5CC7E8';

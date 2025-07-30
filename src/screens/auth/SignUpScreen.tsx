@@ -376,7 +376,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
       <PageBackground theme={theme} variant="auth">
         <SafeAreaView style={styles.container}>
           <Animated.View style={[styles.successContainer, { opacity: successAnim }]}>
-            <Text style={styles.successEmoji}>🎉</Text>
+            <Text style={styles.successEmoji}>*</Text>
             <Text style={[styles.successTitle, { color: themeColors.text }]}>
               Welcome to Numina!
             </Text>
@@ -384,7 +384,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
               Your Numina is ready to understand and grow with you
             </Text>
             <View style={styles.successFeature}>
-              <Text style={styles.successFeatureIcon}>🧠</Text>
+              <Text style={styles.successFeatureIcon}>*</Text>
               <Text style={[styles.successFeatureText, { color: themeColors.textMuted }]}>
                 Starting behavioral analysis...
               </Text>

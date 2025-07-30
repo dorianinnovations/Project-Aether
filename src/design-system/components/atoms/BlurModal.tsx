@@ -96,6 +96,7 @@ export const BlurModal: React.FC<BlurModalProps> = ({
 }) => {
   const themeColors = getThemeColors(theme);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [shouldRender, setShouldRender] = useState(visible);
   
   // Animation values
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
@@ -209,6 +210,19 @@ export const BlurModal: React.FC<BlurModalProps> = ({
     });
   }, [isAnimating, resetAnimations]);
 
+  // Effect to handle render state timing
+  useEffect(() => {
+    if (visible) {
+      setShouldRender(true);
+    } else {
+      // Delay unmounting to allow exit animation to complete
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 200); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
   // Effect to handle visibility changes
   useEffect(() => {
     if (visible) {
@@ -275,7 +289,7 @@ export const BlurModal: React.FC<BlurModalProps> = ({
     });
   };
 
-  if (!visible) return null;
+  if (!shouldRender) return null;
 
   const finalIconColor = iconColor || designTokens.brand.primary;
   const finalButtonColor = buttonColor || designTokens.brand.primary;
@@ -285,7 +299,7 @@ export const BlurModal: React.FC<BlurModalProps> = ({
   return (
     <Modal
       transparent
-      visible={visible}
+      visible={shouldRender}
       statusBarTranslucent
       animationType="none"
     >

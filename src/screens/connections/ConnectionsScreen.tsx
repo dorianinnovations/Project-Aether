@@ -311,13 +311,13 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       
       <View style={styles.eventDetails}>
         <Text style={[styles.eventDate, { color: themeColors.text }]}>
-          📅 {event.date}
+          {event.date}
         </Text>
         <Text style={[styles.eventLocation, { color: themeColors.textMuted }]}>
-          📍 {event.location}
+          {event.location}
         </Text>
         <Text style={[styles.eventAttendees, { color: themeColors.textMuted }]}>
-          👥 {event.attendees} attending
+          {event.attendees} attending
         </Text>
       </View>
       
@@ -374,7 +374,6 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       onMenuPress={toggleHeaderMenu}
       theme={theme}
       isVisible={true}
-      isActive={isLoading}
       isMenuOpen={showHeaderMenu}
     />
   );

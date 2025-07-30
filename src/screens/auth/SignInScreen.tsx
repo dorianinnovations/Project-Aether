@@ -629,7 +629,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({
                               ) : isSignInSuccess ? (
                                 <ShimmerText
                                   customShimmerColor={rainbowPastels[currentColorIndex]}
-                                  style={[styles.primaryButtonText, { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }]}
+                                  style={StyleSheet.flatten([styles.primaryButtonText, { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }])}
                                   intensity="vibrant"
                                   duration={800}
                                   waveWidth="wide"

@@ -156,11 +156,11 @@ echo "Login response: $LOGIN_RESPONSE"
 TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.token')
 
 if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
-    echo "❌ Failed to get token"
+    echo "Failed to get token"
     exit 1
 fi
 
-echo "✅ Token obtained: ${TOKEN:0:20}..."
+echo "Token obtained: ${TOKEN:0:20}..."
 
 echo ""
 echo "🤖 Testing adaptive-chat endpoint..."
