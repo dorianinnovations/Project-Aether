@@ -89,31 +89,31 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Staggered load-in sequence
+    // Staggered load-in sequence - longer and smoother
     const animateSequence = () => {
-      // Title first (200ms delay)
+      // Title first (300ms delay)
       setTimeout(() => {
         Animated.timing(titleOpacity, {
           toValue: 1,
-          duration: 500,
+          duration: 800,
           useNativeDriver: true,
         }).start();
-      }, 200);
+      }, 300);
 
-      // Form second (500ms delay)
+      // Form second (700ms delay)
       setTimeout(() => {
         Animated.timing(formOpacity, {
           toValue: 1,
-          duration: 500,
+          duration: 900,
           useNativeDriver: true,
         }).start();
-      }, 500);
+      }, 700);
 
-      // Button third (800ms delay)
+      // Button third (1200ms delay)
       setTimeout(() => {
         Animated.timing(buttonOpacity, {
           toValue: 1,
-          duration: 500,
+          duration: 800,
           useNativeDriver: true,
         }).start();
         
@@ -122,27 +122,27 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
           Animated.sequence([
             Animated.timing(buttonGlowAnim, {
               toValue: 1,
-              duration: 3000,
+              duration: 3500,
               useNativeDriver: true,
             }),
             Animated.timing(buttonGlowAnim, {
               toValue: 0,
-              duration: 3000,
+              duration: 3500,
               useNativeDriver: true,
             }),
           ])
         );
         glowAnimation.start();
-      }, 800);
+      }, 1200);
 
-      // Link last (1100ms delay)
+      // Link last (1600ms delay)
       setTimeout(() => {
         Animated.timing(linkOpacity, {
           toValue: 1,
-          duration: 500,
+          duration: 700,
           useNativeDriver: true,
         }).start();
-      }, 1100);
+      }, 1600);
     };
 
     animateSequence();

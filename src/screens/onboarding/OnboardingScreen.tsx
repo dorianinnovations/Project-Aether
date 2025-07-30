@@ -342,10 +342,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
                     borderColor: theme === 'dark' ? '#333333' : '#e5e7eb',
                     // Neumorphic bottom-right shadow
                     shadowColor: theme === 'dark' ? '#000000' : '#000000',
-                    shadowOffset: { width: 4, height: 8 },
-                    shadowOpacity: theme === 'dark' ? 0.6 : 0.4,
-                    shadowRadius: 12,
-                    elevation: 8,
+                    shadowOffset: { width: 3, height: 6 },
+                    shadowOpacity: theme === 'dark' ? 0.4 : 0.25,
+                    shadowRadius: 10,
+                    elevation: 6,
                   }
                 ]}
               >
