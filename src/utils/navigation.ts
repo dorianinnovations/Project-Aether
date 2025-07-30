@@ -1,33 +1,37 @@
-/**
- * Navigation Utilities
- * Safe navigation helpers to prevent "GO_BACK" action errors
- */
+// Navigation utilities
 
-export const safeGoBack = (
-  navigation: any,
-  fallbackAction?: () => void
+import { NavigationProp } from '@react-navigation/native';
+
+export type RootStackParamList = {
+  Chat: undefined;
+  Profile: undefined;
+  Connections: undefined;
+  Insights: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
+};
+
+export type NavigationProps = NavigationProp<RootStackParamList>;
+
+export const navigateToScreen = (
+  navigation: NavigationProps,
+  screenName: keyof RootStackParamList
 ): void => {
+  navigation.navigate(screenName);
+};
+
+export const goBack = (navigation: NavigationProps): void => {
   if (navigation.canGoBack()) {
     navigation.goBack();
-  } else if (fallbackAction) {
-    fallbackAction();
-  } else {
-    console.warn('safeGoBack: No previous screen to go back to and no fallback provided');
   }
 };
 
-export const safeNavigateBack = (
-  navigation: any,
-  onNavigateBack?: () => void,
-  onNavigateToHero?: () => void
+export const resetToScreen = (
+  navigation: NavigationProps,
+  screenName: keyof RootStackParamList
 ): void => {
-  if (onNavigateBack) {
-    onNavigateBack();
-  } else if (navigation.canGoBack()) {
-    navigation.goBack();
-  } else if (onNavigateToHero) {
-    onNavigateToHero();
-  } else {
-    console.warn('safeNavigateBack: No back handler, previous screen, or hero navigation provided');
-  }
+  navigation.reset({
+    index: 0,
+    routes: [{ name: screenName }],
+  });
 };

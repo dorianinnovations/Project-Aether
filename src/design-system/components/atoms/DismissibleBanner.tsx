@@ -234,7 +234,7 @@ const DismissibleBanner: React.FC<DismissibleBannerProps> = ({
           }],
         };
       case 'slide':
-      default:
+      default: {
         const slideDirection = position === 'top' ? -50 : position === 'bottom' ? 50 : 20;
         return {
           opacity: animatedValue,
@@ -245,6 +245,7 @@ const DismissibleBanner: React.FC<DismissibleBannerProps> = ({
             }),
           }],
         };
+      }
     }
   };
 
