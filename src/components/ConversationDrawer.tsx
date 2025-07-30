@@ -39,7 +39,7 @@ import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 // Design System
-import { designTokens, getThemeColors } from '../design-system/tokens/colors';
+import { designTokens, getThemeColors, getStandardBorder } from '../design-system/tokens/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { typography } from '../design-system/tokens/typography';
 import { spacing } from '../design-system/tokens/spacing';
@@ -212,13 +212,13 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       easing: Easing.out(Easing.quad),
     });
     
-    // Enhance shadow for depth perception
-    shadowOpacity.value = withTiming(0.3, {
+    // Reduce shadow for subtle depth perception
+    shadowOpacity.value = withTiming(0.15, {
       duration: 320,
       easing: Easing.out(Easing.quad),
     });
     
-    shadowRadius.value = withTiming(20, {
+    shadowRadius.value = withTiming(12, {
       duration: 380,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
@@ -557,7 +557,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     return {
       shadowOpacity: shadowOpacity.value,
       shadowRadius: shadowRadius.value,
-      elevation: shadowOpacity.value * 30, // Dynamic elevation for Android
+      elevation: shadowOpacity.value * 20, // Reduced elevation for Android
     };
   });
 
@@ -672,7 +672,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   ? 'rgba(110, 231, 183, 0.15)'
                   : 'rgba(110, 231, 183, 0.25)'
                 : theme === 'dark'
-                  ? 'rgba(17, 17, 17, 0.4)'
+                  ? 'rgba(45, 45, 45, 0.6)'
                   : 'rgba(248, 250, 252, 0.4)',
             }
           ]}
@@ -744,7 +744,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       <View style={[
         styles.header,
         {
-          borderBottomColor: theme === 'dark' ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+          borderBottomColor: theme === 'dark' ? designTokens.borders.dark.default : designTokens.borders.light.default,
         }
       ]}>
         <View style={styles.headerContent}>
@@ -765,7 +765,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   {
                     backgroundColor: index === currentPage 
                       ? (theme === 'dark' ? '#6ee7b7' : '#10b981')
-                      : (theme === 'dark' ? designTokens.surfaces.dark.elevated : designTokens.surfaces.light.elevated),
+                      : (theme === 'dark' ? designTokens.surfaces.dark.highlight : designTokens.surfaces.light.elevated),
                   }
                 ]}
                 onPress={() => navigateToPage(index)}
@@ -782,7 +782,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 styles.newChatButton,
                 {
                   backgroundColor: theme === 'dark' 
-                    ? 'rgba(255, 255, 255, 0.05)' 
+                    ? 'rgba(255, 255, 255, 0.08)' 
                     : 'rgba(255, 255, 255, 1)',
                   shadowOpacity: theme === 'dark' ? 0.2 : 0.08,
                 }
@@ -809,7 +809,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 styles.clearAllButton,
                 {
                   backgroundColor: theme === 'dark' 
-                    ? 'rgba(255, 255, 255, 0.05)' 
+                    ? 'rgba(255, 255, 255, 0.08)' 
                     : 'rgba(255, 255, 255, 1)',
                   shadowOpacity: theme === 'dark' ? 0.2 : 0.08,
                 }
@@ -832,7 +832,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
               styles.closeButton,
               {
                 backgroundColor: theme === 'dark' 
-                  ? 'rgba(255, 255, 255, 0.05)' 
+                  ? 'rgba(255, 255, 255, 0.08)' 
                   : 'rgba(255, 255, 255, 1)',
                 shadowOpacity: theme === 'dark' ? 0.2 : 0.08,
               }
@@ -943,7 +943,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         keyboardDismissMode="on-drag"
       >
         {pages.map((page) => (
-          <View style={styles.pageContainer}>
+          <View key={page.id} style={styles.pageContainer}>
             {renderPageContent(page.id)}
           </View>
         ))}
@@ -983,9 +983,13 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             styles.drawer,
             drawerAnimatedStyle,
             drawerShadowStyle,
+            getStandardBorder(theme),
             {
-              backgroundColor: themeColors.background,
-              borderRightColor: theme === 'dark' ? '#23272b' : 'rgba(0, 0, 0, 0.1)',
+              backgroundColor: theme === 'dark' ? designTokens.surfaces.dark.elevated : themeColors.background,
+              borderRightWidth: 1,
+              borderLeftWidth: 0,
+              borderTopWidth: 0,
+              borderBottomWidth: 0,
             },
           ]}
         >
@@ -1004,9 +1008,9 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             styles.modalContainer,
             clearModalContainerStyle,
             {
-              backgroundColor: theme === 'dark' ? '#1a1a1a' : '#add5fa',
+              backgroundColor: theme === 'dark' ? designTokens.surfaces.dark.elevated : '#add5fa',
               borderColor: theme === 'dark' 
-                ? 'rgba(255, 255, 255, 0.1)' 
+                ? designTokens.borders.dark.default
                 : 'rgba(255, 255, 255, 0.3)',
             }
           ]}>
@@ -1195,10 +1199,10 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
             styles.modalContainer,
             deleteModalContainerStyle,
             {
-              backgroundColor: theme === 'dark' ? '#1a1a1a' : '#add5fa',
+              backgroundColor: theme === 'dark' ? designTokens.surfaces.dark.elevated : '#add5fa',
               borderColor: theme === 'dark' 
-                ? 'rgba(255, 255, 255, 0.1)' 
-                : 'rgba(255, 255, 255, 0.3)',
+                ? designTokens.borders.dark.default
+                : 'rgba(255, 225, 255, 0.3)',
             }
           ]}>
             {deleteStatus === 'idle' ? (
@@ -1439,6 +1443,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 22,
+    fontFamily: 'Nunito-Bold',
     fontWeight: '700',
     letterSpacing: -0.4,
     lineHeight: 28,

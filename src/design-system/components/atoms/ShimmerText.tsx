@@ -117,9 +117,13 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
         const wavePeak = waveStart + peakOffset;
         const waveEnd = waveStart + endOffset;
         
+        // Ensure monotonic increasing inputRange
+        const waveEndClamped = Math.min(waveEnd, 0.39);
+        const staticStart = Math.max(waveEndClamped + 0.01, 0.4);
+        
         // Create color interpolation for this specific character
         const animatedColor = animatedValue.interpolate({
-          inputRange: [0, waveStart, wavePeak, waveEnd, 0.4, 1],
+          inputRange: [0, waveStart, wavePeak, waveEndClamped, staticStart, 1],
           outputRange: [
             baseColor,     // Start - static
             baseColor,     // Just before shimmer

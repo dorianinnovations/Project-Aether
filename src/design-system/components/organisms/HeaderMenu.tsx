@@ -399,7 +399,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         <View style={[
           styles.arrow,
           {
-            borderBottomColor: theme === 'light' ? '#ffffff' : '#1A1A1A',
+            borderBottomColor: theme === 'light' ? '#ffffff' : designTokens.brand.surfaceDark,
           }
         ]} />
         

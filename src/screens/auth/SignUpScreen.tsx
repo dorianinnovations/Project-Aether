@@ -23,6 +23,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
 import { AnimatedAuthStatus } from '../../design-system/components/atoms/AnimatedAuthStatus';
+import { ShimmerText } from '../../design-system/components/atoms/ShimmerText';
 import { Header, HeaderMenu } from '../../design-system/components/organisms';
 import { designTokens, getThemeColors, stateColors } from '../../design-system/tokens/colors';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -55,6 +56,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [showSlowServerMessage, setShowSlowServerMessage] = useState(false);
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  
+  // Rainbow pastel colors for shimmer text
+  const rainbowPastels = ['#FF8FA3', '#FFB84D', '#FFD23F', '#4ECDC4', '#C77DFF', '#FF6B9D'];
+  const [currentColorIndex, setCurrentColorIndex] = useState(0);
   
   // Use either auth loading or local loading
   const loading = localLoading;
@@ -165,6 +170,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
       }
     };
   }, [timeoutId]);
+
+  // Cycle through rainbow colors every 2 seconds
+  useEffect(() => {
+    const colorCycleInterval = setInterval(() => {
+      setCurrentColorIndex((prev) => (prev + 1) % rainbowPastels.length);
+    }, 2000);
+    
+    return () => clearInterval(colorCycleInterval);
+  }, [rainbowPastels.length]);
 
   const clearErrorOnChange = () => {
     if (error) {
@@ -462,14 +476,14 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 <View style={[
                   styles.formContainer, 
                   theme === 'dark' ? {
-                    backgroundColor: '#0a0a0a',
-                    borderColor: '#181818',
-                    borderWidth: 1.2,
+                    backgroundColor: '#151515',
+                    borderColor: '#333333',
+                    borderWidth: 1,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.6,
+                    shadowOpacity: 0.4,
                     shadowRadius: 12,
-                    elevation: 15,
+                    elevation: 8,
                   } : styles.glassmorphic
                 ]}>
                   {/* Header */}
@@ -516,7 +530,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             styles.input,
                             { 
                               color: theme === 'dark' ? '#ffffff' : '#000000',
-                              backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#2a2a2a' : '#ffffff',
                               shadowColor: theme === 'dark' ? '#000000' : '#000000',
                               shadowOffset: { width: 0, height: theme === 'dark' ? 4 : 1 },
                               shadowOpacity: theme === 'dark' ? 0.5 : 0.12,
@@ -595,7 +609,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: theme === 'dark' ? '#ffffff' : '#000000',
-                                backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+                                backgroundColor: theme === 'dark' ? '#2a2a2a' : '#ffffff',
                                 shadowColor: theme === 'dark' ? '#000000' : '#000000',
                                 shadowOffset: { width: 0, height: theme === 'dark' ? 4 : 1 },
                                 shadowOpacity: theme === 'dark' ? 0.5 : 0.12,
@@ -699,7 +713,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             styles.input,
                             { 
                               color: theme === 'dark' ? '#ffffff' : '#000000',
-                              backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#2a2a2a' : '#ffffff',
                               shadowColor: theme === 'dark' ? '#000000' : '#000000',
                               shadowOffset: { width: 0, height: theme === 'dark' ? 4 : 1 },
                               shadowOpacity: theme === 'dark' ? 0.5 : 0.12,
@@ -795,10 +809,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           style={[
                             styles.primaryButton,
                             {
-                              backgroundColor: theme === 'dark' ? '#0a0a0a' : designTokens.brand.primary,
+                              backgroundColor: theme === 'dark' ? '#0d0d0d' : designTokens.brand.primary,
                               opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
                               borderColor: theme === 'dark' ? '#262626' : 'transparent',
                               borderWidth: theme === 'dark' ? 1 : 0,
+                              shadowColor: '#ffffff',
+                              shadowOffset: { width: 0, height: 0 },
+                              shadowOpacity: theme === 'dark' ? 0.15 : 0.1,
+                              shadowRadius: 4,
+                              elevation: theme === 'dark' ? 3 : 2,
                             }
                           ]}
                           onPress={handleSubmit}
@@ -807,12 +826,30 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         >
                           <View style={styles.buttonContent}>
                             <View style={styles.buttonTextContainer}>
-                              <Text style={[
-                                styles.primaryButtonText, 
-                                { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }
-                              ]}>
-                                {loading ? 'Creating Account' : isSignUpSuccess ? 'Success!' : 'Create Account'}
-                              </Text>
+                              {loading ? (
+                                <Text style={[
+                                  styles.primaryButtonText, 
+                                  { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }
+                                ]}>
+                                  Creating Account
+                                </Text>
+                              ) : isSignUpSuccess ? (
+                                <Text style={[
+                                  styles.primaryButtonText, 
+                                  { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }
+                                ]}>
+                                  Success!
+                                </Text>
+                              ) : (
+                                <ShimmerText
+                                  customShimmerColor={rainbowPastels[currentColorIndex]}
+                                  style={[styles.primaryButtonText, { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }]}
+                                  intensity="vibrant"
+                                  duration={1500}
+                                >
+                                  Create Account
+                                </ShimmerText>
+                              )}
                             </View>
                             {authStatus !== 'idle' && (
                               <View style={styles.spinnerContainer}>
@@ -848,7 +885,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           styles.linkText, 
                           { color: theme === 'dark' ? '#cccccc' : '#b0b0b0' }
                         ]}>
-                          Already have an account? <Text style={[styles.linkTextBold, { color: theme === 'dark' ? '#aaaaaa' : '#888888' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: theme === 'dark' ? '#aaaaaa' : '#888888' }]}>in</Text>
+                          Already have an account? <Text style={[styles.linkTextBold, { color: theme === 'dark' ? '#aaaaaa' : '#888888' }]}>Sign in</Text>
                         </Text>
                       </TouchableOpacity>
                     </Animated.View>

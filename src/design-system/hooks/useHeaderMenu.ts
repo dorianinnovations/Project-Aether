@@ -24,9 +24,8 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
     
     switch (key) {
       case 'profile':
-        // For now, navigate to Chat as profile screen isn't implemented
-        if (screenName !== 'chat') {
-          (navigation as any).navigate('Chat');
+        if (screenName !== 'profile') {
+          (navigation as any).navigate('Profile');
         }
         break;
       case 'chat':
