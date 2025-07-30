@@ -126,15 +126,33 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         const firstName = userData?.name?.split(' ')[0] || 'User';
         setUserName(firstName);
         
-        // Get time-based greeting
+        // Get time-based greeting with proper time ranges
         const hour = new Date().getHours();
-        let timeGreeting = 'Good Evening';
-        if (hour < 12) timeGreeting = 'Good Morning';
-        else if (hour < 17) timeGreeting = 'Good Afternoon';
+        let timeGreeting;
+        
+        if (hour >= 5 && hour < 12) {
+          timeGreeting = 'Good Morning';
+        } else if (hour >= 12 && hour < 17) {
+          timeGreeting = 'Good Afternoon';
+        } else {
+          timeGreeting = 'Good Evening';
+        }
         
         setGreetingText(`${timeGreeting}, ${firstName}`);
       } catch (error) {
-        setGreetingText('Good Evening');
+        // Fallback with current time-based greeting
+        const hour = new Date().getHours();
+        let timeGreeting;
+        
+        if (hour >= 5 && hour < 12) {
+          timeGreeting = 'Good Morning';
+        } else if (hour >= 12 && hour < 17) {
+          timeGreeting = 'Good Afternoon';
+        } else {
+          timeGreeting = 'Good Evening';
+        }
+        
+        setGreetingText(`${timeGreeting}, User`);
       }
     };
     
@@ -145,17 +163,17 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener('keyboardWillShow', (event) => {
       setKeyboardHeight(event.endCoordinates.height);
-      // Animate greeting up when keyboard shows
+      // Animate greeting up when keyboard shows - much faster to sync with keyboard
       Animated.parallel([
         Animated.timing(greetingAnimY, {
           toValue: -120,
-          duration: 250,
+          duration: 150,
           easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
           useNativeDriver: true,
         }),
         Animated.timing(greetingOpacity, {
           toValue: 0.7,
-          duration: 250,
+          duration: 150,
           useNativeDriver: true,
         })
       ]).start();
@@ -163,17 +181,17 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
     const keyboardWillHide = Keyboard.addListener('keyboardWillHide', () => {
       setKeyboardHeight(0);
-      // Animate greeting back down when keyboard hides
+      // Animate greeting back down when keyboard hides - faster for better sync
       Animated.parallel([
         Animated.timing(greetingAnimY, {
           toValue: 0,
-          duration: 250,
+          duration: 150,
           easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
           useNativeDriver: true,
         }),
         Animated.timing(greetingOpacity, {
           toValue: 1,
-          duration: 250,
+          duration: 150,
           useNativeDriver: true,
         })
       ]).start();
