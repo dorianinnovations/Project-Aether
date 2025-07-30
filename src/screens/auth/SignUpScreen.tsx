@@ -46,6 +46,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const { theme, colors, toggleTheme } = useTheme();
   
   // Form state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -79,6 +81,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
   const buttonGlowAnim = useRef(new Animated.Value(0)).current;
+  const firstNameInputScaleAnim = useRef(new Animated.Value(1)).current;
+  const lastNameInputScaleAnim = useRef(new Animated.Value(1)).current;
   const emailInputScaleAnim = useRef(new Animated.Value(1)).current;
   const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
   const confirmPasswordInputScaleAnim = useRef(new Animated.Value(1)).current;
@@ -89,6 +93,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const successAnim = useRef(new Animated.Value(0)).current;
   
   // Input refs
+  const firstNameInputRef = useRef<TextInput>(null);
+  const lastNameInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -230,7 +236,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
     // Dismiss keyboard when form is submitted
     Keyboard.dismiss();
     
-    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
       setError('Please fill in all fields');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -302,7 +308,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
     ]).start();
 
     try {
-      const response = await AuthAPI.signup(email.trim(), password);
+      const response = await AuthAPI.signup(email.trim(), password, `${firstName.trim()} ${lastName.trim()}`);
 
       if (response) { // Assuming successful response
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -523,6 +529,120 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   <Animated.View style={[styles.formContent, { opacity: formOpacity }]}>
                     {/* Input fields */}
                     <View style={styles.inputGroup}>
+                      {/* Name Fields - Side by Side */}
+                      <View style={styles.nameRow}>
+                        <Animated.View style={[styles.nameInputContainer, { transform: [{ scale: firstNameInputScaleAnim }] }]}>
+                          <TextInput
+                            ref={firstNameInputRef}
+                            style={[
+                              styles.input,
+                              styles.nameInput,
+                              { 
+                                color: theme === 'dark' ? '#ffffff' : '#000000',
+                                backgroundColor: theme === 'dark' ? '#2a2a2a' : '#ffffff',
+                                shadowColor: theme === 'dark' ? '#000000' : '#000000',
+                                shadowOffset: { width: 0, height: theme === 'dark' ? 4 : 1 },
+                                shadowOpacity: theme === 'dark' ? 0.5 : 0.12,
+                                shadowRadius: theme === 'dark' ? 12 : 3,
+                                elevation: theme === 'dark' ? 6 : 3,
+                              }
+                            ]}
+                            placeholder="First Name"
+                            placeholderTextColor={theme === 'dark' ? '#666666' : '#999999'}
+                            value={firstName}
+                            onChangeText={(text) => {
+                              setFirstName(text);
+                              clearErrorOnChange();
+                            }}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                            spellCheck={false}
+                            keyboardType="default"
+                            keyboardAppearance={theme === 'dark' ? 'dark' : 'light'}
+                            returnKeyType="next"
+                            editable={!loading}
+                            onSubmitEditing={() => lastNameInputRef.current?.focus()}
+                            onFocus={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              Animated.parallel([
+                                Animated.timing(firstNameInputScaleAnim, {
+                                  toValue: 1.02,
+                                  duration: 200,
+                                  easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+                                  useNativeDriver: true,
+                                }),
+                              ]).start();
+                            }}
+                            onBlur={() => {
+                              Animated.parallel([
+                                Animated.timing(firstNameInputScaleAnim, {
+                                  toValue: 1,
+                                  duration: 350,
+                                  easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+                                  useNativeDriver: true,
+                                }),
+                              ]).start();
+                            }}
+                          />
+                        </Animated.View>
+                        
+                        <Animated.View style={[styles.nameInputContainer, { transform: [{ scale: lastNameInputScaleAnim }] }]}>
+                          <TextInput
+                            ref={lastNameInputRef}
+                            style={[
+                              styles.input,
+                              styles.nameInput,
+                              { 
+                                color: theme === 'dark' ? '#ffffff' : '#000000',
+                                backgroundColor: theme === 'dark' ? '#2a2a2a' : '#ffffff',
+                                shadowColor: theme === 'dark' ? '#000000' : '#000000',
+                                shadowOffset: { width: 0, height: theme === 'dark' ? 4 : 1 },
+                                shadowOpacity: theme === 'dark' ? 0.5 : 0.12,
+                                shadowRadius: theme === 'dark' ? 12 : 3,
+                                elevation: theme === 'dark' ? 6 : 3,
+                              }
+                            ]}
+                            placeholder="Last Name"
+                            placeholderTextColor={theme === 'dark' ? '#666666' : '#999999'}
+                            value={lastName}
+                            onChangeText={(text) => {
+                              setLastName(text);
+                              clearErrorOnChange();
+                            }}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                            spellCheck={false}
+                            keyboardType="default"
+                            keyboardAppearance={theme === 'dark' ? 'dark' : 'light'}
+                            returnKeyType="next"
+                            editable={!loading}
+                            onSubmitEditing={() => emailInputRef.current?.focus()}
+                            onFocus={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              Animated.parallel([
+                                Animated.timing(lastNameInputScaleAnim, {
+                                  toValue: 1.02,
+                                  duration: 200,
+                                  easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+                                  useNativeDriver: true,
+                                }),
+                              ]).start();
+                            }}
+                            onBlur={() => {
+                              Animated.parallel([
+                                Animated.timing(lastNameInputScaleAnim, {
+                                  toValue: 1,
+                                  duration: 350,
+                                  easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+                                  useNativeDriver: true,
+                                }),
+                              ]).start();
+                            }}
+                          />
+                        </Animated.View>
+                      </View>
+                      
+                      {/* Email Input */}
                       <Animated.View style={{ transform: [{ scale: emailInputScaleAnim }] }}>
                         <TextInput
                           ref={emailInputRef}
@@ -843,7 +963,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               ) : (
                                 <ShimmerText
                                   customShimmerColor={rainbowPastels[currentColorIndex]}
-                                  style={[styles.primaryButtonText, { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }]}
+                                  style={StyleSheet.flatten([styles.primaryButtonText, { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }])}
                                   intensity="vibrant"
                                   duration={1500}
                                 >
@@ -1012,6 +1132,16 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     gap: 16,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  nameInputContainer: {
+    flex: 1,
+  },
+  nameInput: {
+    marginBottom: 0,
   },
   input: {
     paddingHorizontal: 16,

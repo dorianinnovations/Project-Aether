@@ -28,6 +28,7 @@ export interface AuthResponse {
     user: {
       id: string;
       email: string;
+      name?: string;
     };
   };
   welcomeEmail?: {
@@ -256,10 +257,11 @@ function getErrorMessage(error: any): string {
 
 // Authentication API
 export const AuthAPI = {
-  async signup(email: string, password: string): Promise<AuthResponse> {
+  async signup(email: string, password: string, name?: string): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/signup', {
       email,
       password,
+      ...(name && { name }),
     });
     
     // Store token and user data

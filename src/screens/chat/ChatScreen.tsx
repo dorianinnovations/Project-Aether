@@ -17,6 +17,8 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  Easing,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -30,6 +32,7 @@ import SettingsModal from './SettingsModal';
 import ConversationDrawer from '../../components/ConversationDrawer';
 import ScrollToBottomButton from '../../design-system/components/atoms/ScrollToBottomButton';
 import Tooltip from '../../design-system/components/atoms/Tooltip';
+import { ShimmerText } from '../../design-system/components/atoms/ShimmerText';
 
 // Design System
 import { designTokens, getThemeColors, getLoadingTextColor } from '../../design-system/tokens/colors';
@@ -45,7 +48,7 @@ import Icon from '../../design-system/components/atoms/Icon';
 import { useHeaderMenu } from '../../design-system/hooks';
 
 // Services
-import { ChatAPI, ApiUtils, ConversationAPI, AuthAPI } from '../../services/api';
+import { ChatAPI, ApiUtils, ConversationAPI, AuthAPI, TokenManager } from '../../services/api';
 
 // Types
 interface Message {
@@ -83,6 +86,16 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  
+  // Dynamic greeting state
+  const [userName, setUserName] = useState<string>('');
+  const [greetingText, setGreetingText] = useState<string>('');
+  const [showGreeting, setShowGreeting] = useState<boolean>(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  
+  // Animation refs for dynamic greeting
+  const greetingAnimY = useRef(new Animated.Value(0)).current;
+  const greetingOpacity = useRef(new Animated.Value(1)).current;
 
   // Header menu hook
   const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
@@ -105,17 +118,72 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     "Find me connections with similar interests",
   ]);
 
-  // Initialize with welcome message
+  // Initialize dynamic greeting
   useEffect(() => {
-        const welcomeMessage: Message = {
-      id: 'welcome',
-      sender: 'numina',
-      message: "Hello! I'm Numina, your adaptive companion. I learn from our conversations to understand your unique patterns and preferences. What would you like to explore today?",
-      timestamp: new Date().toISOString(),
-      variant: 'default',
+    const initializeGreeting = async () => {
+      try {
+        const userData = await TokenManager.getUserData();
+        const firstName = userData?.name?.split(' ')[0] || 'User';
+        setUserName(firstName);
+        
+        // Get time-based greeting
+        const hour = new Date().getHours();
+        let timeGreeting = 'Good Evening';
+        if (hour < 12) timeGreeting = 'Good Morning';
+        else if (hour < 17) timeGreeting = 'Good Afternoon';
+        
+        setGreetingText(`${timeGreeting}, ${firstName}`);
+      } catch (error) {
+        setGreetingText('Good Evening');
+      }
     };
-    setMessages([welcomeMessage]);
+    
+    initializeGreeting();
   }, []);
+
+  // Keyboard animation listeners
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener('keyboardWillShow', (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      // Animate greeting up when keyboard shows
+      Animated.parallel([
+        Animated.timing(greetingAnimY, {
+          toValue: -120,
+          duration: 250,
+          easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+          useNativeDriver: true,
+        }),
+        Animated.timing(greetingOpacity, {
+          toValue: 0.7,
+          duration: 250,
+          useNativeDriver: true,
+        })
+      ]).start();
+    });
+
+    const keyboardWillHide = Keyboard.addListener('keyboardWillHide', () => {
+      setKeyboardHeight(0);
+      // Animate greeting back down when keyboard hides
+      Animated.parallel([
+        Animated.timing(greetingAnimY, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+          useNativeDriver: true,
+        }),
+        Animated.timing(greetingOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        })
+      ]).start();
+    });
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, [greetingAnimY, greetingOpacity]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -138,6 +206,11 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   // Handle sending message
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return;
+
+    // Hide greeting on first message
+    if (showGreeting) {
+      setShowGreeting(false);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -518,6 +591,32 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
           backgroundColor="transparent"
           translucent
         />
+
+        {/* Dynamic Greeting Banner */}
+        {greetingText && showGreeting && (
+          <Animated.View 
+            style={[
+              styles.greetingBanner,
+              {
+                transform: [{ translateY: greetingAnimY }],
+                opacity: greetingOpacity,
+              }
+            ]}
+          >
+            <ShimmerText 
+              style={{
+                ...styles.greetingText,
+                color: colors.text,
+              }}
+              intensity="subtle"
+              duration={3000}
+              waveWidth="wide"
+              enabled={true}
+            >
+              {greetingText}
+            </ShimmerText>
+          </Animated.View>
+        )}
       
       <KeyboardAvoidingView 
         style={styles.keyboardContainer}
@@ -658,6 +757,27 @@ const styles = StyleSheet.create({
   
   keyboardContainer: {
     flex: 1,
+  },
+
+  // Dynamic Greeting Banner
+  greetingBanner: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[4],
+    transform: [{ translateY: -12 }], // Offset to account for text height
+  },
+  greetingText: {
+    fontSize: 24,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
 
   // Header
