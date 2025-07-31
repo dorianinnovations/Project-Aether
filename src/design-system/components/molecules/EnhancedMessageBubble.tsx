@@ -24,6 +24,8 @@ import { spacing, borderRadius } from '../../tokens/spacing';
 import { getNeumorphicStyle } from '../../tokens/shadows';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
 import MarkdownText from '../atoms/MarkdownText';
+import { ToolCall } from '../../../types';
+// SearchResultsModal removed - sources shown inline
 
 const { width } = Dimensions.get('window');
 
@@ -32,10 +34,23 @@ interface Message {
   text: string;
   sender: 'user' | 'numina' | 'system';
   timestamp: string;
+  variant?: 'default' | 'streaming' | 'error' | 'tool';
   mood?: string;
-  isStreaming?: boolean;
   attachments?: MessageAttachment[];
   isSystem?: boolean;
+  metadata?: {
+    toolUsed?: string;
+    toolCalls?: ToolCall[];
+    confidence?: number;
+    processingTime?: number;
+    searchResults?: boolean;
+    query?: string;
+    sources?: Array<{
+      title: string;
+      url: string;
+      domain: string;
+    }>;
+  };
   personalityContext?: {
     communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
     emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
@@ -73,41 +88,16 @@ interface EnhancedMessageBubbleProps {
 // Component for rendering formatted bot messages
 const BotMessageContent: React.FC<{
   text: string | undefined;
-  isStreaming?: boolean;
   theme: 'light' | 'dark';
   messageId?: string;
-}> = ({ text, isStreaming, theme, messageId }) => {
+  isStreaming?: boolean;
+}> = ({ text, theme, messageId, isStreaming }) => {
   const safeText = text || '';
   const themeColors = getThemeColors(theme as 'light' | 'dark');
-  const cursorOpacity = useRef(new Animated.Value(1)).current;
-
-  // Animate cursor blinking when streaming
-  useEffect(() => {
-    if (isStreaming && safeText.trim()) {
-      const blinkAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(cursorOpacity, {
-            toValue: 0,
-            duration: 300, // Faster blinking
-            useNativeDriver: true,
-          }),
-          Animated.timing(cursorOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      blinkAnimation.start();
-      return () => blinkAnimation.stop();
-    } else {
-      cursorOpacity.setValue(1);
-    }
-  }, [isStreaming, safeText]);
   
-  // Show Lottie animation when streaming and no text yet, or for typing indicator
+  // Show Lottie animation for typing indicator or empty streaming message
   const isTypingMessage = messageId === 'typing';
-  if ((isStreaming && !safeText.trim()) || isTypingMessage) {
+  if (isTypingMessage || (isStreaming && !safeText.trim())) {
     return (
       <LottieView
         source={require('../../../../assets/CPUProcessorLottie.json')}
@@ -130,25 +120,413 @@ const BotMessageContent: React.FC<{
             fontFamily: 'Nunito-Regular',
             fontWeight: '400',
             color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
-            flexWrap: 'wrap',
-            width: '100%',
+            flexShrink: 1,
           }}
         >
 {safeText}
         </MarkdownText>
-        {isStreaming && (
-          <Animated.Text style={[
-            styles.streamingCursor,
-            {
-              fontSize: 17,
-              fontFamily: 'Nunito-Regular',
-              color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
-              opacity: cursorOpacity,
-            }
-          ]}>|</Animated.Text>
-        )}
       </View>
     </View>
+  );
+};
+
+// Component for rendering tool calls
+const ToolCallDisplay: React.FC<{
+  toolCalls: ToolCall[];
+  theme: 'light' | 'dark';
+}> = ({ toolCalls, theme }) => {
+  const themeColors = getThemeColors(theme);
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [selectedSearchResult, setSelectedSearchResult] = useState<{
+    query: string;
+    results: any[];
+  } | null>(null);
+
+  // Helper function to extract domain from URL
+  const extractDomain = (url: string): string => {
+    try {
+      const domain = new URL(url).hostname;
+      return domain.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
+  
+  const getToolIcon = (toolName: string) => {
+    switch (toolName.toLowerCase()) {
+      case 'web_search':
+      case 'websearch':
+        return 'search';
+      case 'image_search':
+        return 'images';
+      case 'calculator':
+        return 'calculator';
+      case 'weather':
+        return 'cloud-sun';
+      case 'translation':
+        return 'language';
+      default:
+        return 'tools';
+    }
+  };
+
+  const getToolLabel = (toolName: string) => {
+    switch (toolName.toLowerCase()) {
+      case 'web_search':
+      case 'websearch':
+        return 'Web Search';
+      case 'image_search':
+        return 'Image Search';
+      case 'calculator':
+        return 'Calculator';
+      case 'weather':
+        return 'Weather';
+      case 'translation':
+        return 'Translation';
+      default:
+        return toolName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return '#10b981';
+      case 'running':
+        return '#f59e0b';
+      case 'failed':
+        return '#ef4444';
+      default:
+        return '#6b7280';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'check-circle';
+      case 'running':
+        return 'clock';
+      case 'failed':
+        return 'exclamation-circle';
+      default:
+        return 'clock';
+    }
+  };
+
+  // Function to parse search results from tool call result
+  const parseSearchResults = (result: any): any[] => {
+    if (!result) return [];
+    
+    // Handle array of results directly
+    if (Array.isArray(result)) {
+      return result.map(normalizeResult).filter(Boolean);
+    }
+    
+    // Handle object with results property
+    if (result.results && Array.isArray(result.results)) {
+      return result.results.map(normalizeResult).filter(Boolean);
+    }
+    
+    // Handle object with links property
+    if (result.links && Array.isArray(result.links)) {
+      return result.links.map(normalizeResult).filter(Boolean);
+    }
+    
+    // Try to parse JSON string
+    if (typeof result === 'string') {
+      try {
+        const parsed = JSON.parse(result);
+        
+        if (Array.isArray(parsed)) {
+          return parsed.map(normalizeResult).filter(Boolean);
+        }
+        if (parsed.results && Array.isArray(parsed.results)) {
+          return parsed.results.map(normalizeResult).filter(Boolean);
+        }
+        if (parsed.links && Array.isArray(parsed.links)) {
+          return parsed.links.map(normalizeResult).filter(Boolean);
+        }
+        
+        // If it's a single object, wrap it in an array
+        if (typeof parsed === 'object' && parsed !== null) {
+          const normalized = normalizeResult(parsed);
+          return normalized ? [normalized] : [];
+        }
+      } catch (e) {
+        // If it's not JSON, extract URLs from the text if possible
+        const urlRegex = /https?:\/\/[^\s]+/g;
+        const urls = result.match(urlRegex) || [];
+        
+        if (urls.length > 0) {
+          return urls.slice(0, 5).map((url: string, index: number) => ({
+            title: `Search Result ${index + 1}`,
+            url: url.replace(/[)\]}.,;]*$/, ''), // Clean trailing punctuation
+            snippet: "Link found in search results",
+            domain: extractDomain(url)
+          }));
+        }
+        
+        // Fallback: Don't show raw text, show a clean placeholder
+        return [{
+          title: "Search completed",
+          url: "https://google.com/search?q=" + encodeURIComponent("search results"),
+          snippet: "Search operation completed successfully",
+          domain: "google.com"
+        }];
+      }
+    }
+    
+    // Handle single object
+    if (typeof result === 'object' && result !== null) {
+      const normalized = normalizeResult(result);
+      return normalized ? [normalized] : [];
+    }
+    
+    return [];
+  };
+
+  // Helper function to normalize a result object
+  const normalizeResult = (item: any) => {
+    if (!item) return null;
+    
+    // If it's not an object, try to make sense of it
+    if (typeof item !== 'object') {
+      const str = String(item);
+      
+      // If it looks like a URL, make it a result
+      if (str.startsWith('http')) {
+        return {
+          title: "Search Result",
+          url: str,
+          snippet: "Link found in search results",
+          domain: extractDomain(str)
+        };
+      }
+      
+      // Otherwise skip it
+      return null;
+    }
+
+    // Extract clean values, ensuring no nested JSON
+    const title = cleanTextValue(item.title || item.name || item.heading) || "Search Result";
+    const url = cleanUrlValue(item.url || item.link || item.href) || "https://google.com";
+    const snippet = cleanTextValue(item.snippet || item.description || item.summary || item.content) || "";
+    const domain = item.domain || extractDomain(url);
+
+    return {
+      title: title.substring(0, 100), // Limit title length
+      url: url,
+      snippet: snippet.substring(0, 200), // Limit snippet length
+      domain: domain
+    };
+  };
+
+  // Helper to clean text values and prevent JSON display
+  const cleanTextValue = (value: any): string => {
+    if (typeof value !== 'string') {
+      return String(value || '');
+    }
+    
+    // Remove any markdown formatting
+    return value
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links
+      .replace(/[*_`#]/g, '') // Remove markdown formatting
+      .replace(/\n+/g, ' ') // Replace newlines with spaces
+      .trim();
+  };
+
+  // Helper to clean URL values
+  const cleanUrlValue = (value: any): string => {
+    if (typeof value !== 'string') return '';
+    
+    // Ensure it's a valid HTTP URL
+    if (value.startsWith('http')) {
+      return value.split(' ')[0]; // Take only the first URL if multiple
+    }
+    
+    return '';
+  };
+
+  // Function to handle web search click
+  const handleWebSearchClick = (toolCall: ToolCall) => {
+    const query = typeof toolCall.parameters === 'string' 
+      ? toolCall.parameters 
+      : toolCall.parameters?.query || 'search query';
+    
+    const results = parseSearchResults(toolCall.result);
+    
+    setSelectedSearchResult({
+      query,
+      results
+    });
+    
+    setSearchModalVisible(true);
+    
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  return (
+    <>
+    <View style={styles.toolCallsContainer}>
+      {toolCalls.map((toolCall, index) => {
+        const isWebSearch = toolCall.name.toLowerCase().includes('web_search') || 
+                           toolCall.name.toLowerCase().includes('websearch');
+        
+        const ToolContainer = isWebSearch ? TouchableOpacity : View;
+        
+        return (
+          <ToolContainer 
+            key={toolCall.id || index} 
+            style={[
+              styles.toolCallItem,
+              getGlassmorphicStyle('card', theme),
+              {
+                backgroundColor: theme === 'dark' ? '#1a1a1a' : '#f8fafc',
+                borderColor: theme === 'dark' ? '#2a2a2a' : '#e2e8f0',
+              }
+            ]}
+            {...(isWebSearch && {
+              onPress: () => handleWebSearchClick(toolCall),
+              activeOpacity: 0.7
+            })}
+          >
+          <View style={styles.toolCallHeader}>
+            <View style={styles.toolCallInfo}>
+              <FontAwesome5
+                name={getToolIcon(toolCall.name)}
+                size={14}
+                color={theme === 'dark' ? designTokens.semanticDark.info : designTokens.semantic.info}
+                style={styles.toolIcon}
+              />
+              <Text style={[
+                styles.toolCallName,
+                { color: theme === 'dark' ? '#f9fafb' : '#1f2937' }
+              ]}>
+                {getToolLabel(toolCall.name)}
+              </Text>
+            </View>
+            <View style={styles.toolCallStatus}>
+              <FontAwesome5
+                name={getStatusIcon(toolCall.status)}
+                size={12}
+                color={getStatusColor(toolCall.status)}
+              />
+              <Text style={[
+                styles.toolCallStatusText,
+                { color: getStatusColor(toolCall.status) }
+              ]}>
+                {toolCall.status}
+              </Text>
+            </View>
+          </View>
+          
+          {/* For web search, don't show raw parameters/results - use modal instead */}
+          {!isWebSearch && toolCall.parameters && Object.keys(toolCall.parameters).length > 0 && (
+            <View style={styles.toolCallParams}>
+              <Text style={[
+                styles.toolCallParamsLabel,
+                { color: themeColors.textSecondary }
+              ]}>
+                Parameters:
+              </Text>
+              <Text style={[
+                styles.toolCallParamsText,
+                { color: themeColors.textSecondary }
+              ]}>
+                {typeof toolCall.parameters === 'string' 
+                  ? toolCall.parameters 
+                  : JSON.stringify(toolCall.parameters, null, 2)
+                }
+              </Text>
+            </View>
+          )}
+          
+          {/* For web search, show enhanced summary with preview */}
+          {isWebSearch && toolCall.result && toolCall.status === 'completed' && (
+            <View style={styles.toolCallSummary}>
+              <View style={styles.searchSummaryHeader}>
+                <FontAwesome5
+                  name="search"
+                  size={10}
+                  color={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+                />
+                <Text style={[
+                  styles.searchSummaryCount,
+                  { color: theme === 'dark' ? '#9ca3af' : '#6b7280' }
+                ]}>
+                  {(() => {
+                    const results = parseSearchResults(toolCall.result);
+                    return `${results.length} result${results.length !== 1 ? 's' : ''} found`;
+                  })()}
+                </Text>
+              </View>
+              {(() => {
+                const results = parseSearchResults(toolCall.result);
+                const topResult = results[0];
+                return topResult ? (
+                  <View style={styles.topResultPreview}>
+                    <Text style={[
+                      styles.previewTitle,
+                      { color: theme === 'dark' ? '#bdc1c6' : '#4d5156' }
+                    ]} numberOfLines={1}>
+                      {topResult.title}
+                    </Text>
+                    <Text style={[
+                      styles.previewDomain,
+                      { color: theme === 'dark' ? '#9ca3af' : '#70757a' }
+                    ]}>
+                      {topResult.domain}
+                    </Text>
+                  </View>
+                ) : null;
+              })()}
+            </View>
+          )}
+          
+          {/* For non-web search tools, show results normally */}
+          {!isWebSearch && toolCall.result && toolCall.status === 'completed' && (
+            <View style={styles.toolCallResult}>
+              <Text style={[
+                styles.toolCallResultLabel,
+                { color: themeColors.text }
+              ]}>
+                Result:
+              </Text>
+              <Text style={[
+                styles.toolCallResultText,
+                { color: themeColors.textSecondary }
+              ]}>
+                {typeof toolCall.result === 'string' 
+                  ? toolCall.result 
+                  : JSON.stringify(toolCall.result, null, 2)
+                }
+              </Text>
+            </View>
+          )}
+          
+          {/* Visual indicator for clickable web search */}
+          {isWebSearch && (
+            <View style={styles.clickableIndicator}>
+              <FontAwesome5
+                name="external-link-alt"
+                size={10}
+                color={theme === 'dark' ? designTokens.semanticDark.info : designTokens.semantic.info}
+              />
+              <Text style={[
+                styles.clickableText,
+                { color: theme === 'dark' ? designTokens.semanticDark.info : designTokens.semantic.info }
+              ]}>
+                Tap to view results
+              </Text>
+            </View>
+          )}
+        </ToolContainer>
+        );
+      })}
+    </View>
+    </>
   );
 };
 
@@ -232,24 +610,6 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
     }
   }, [index, isUser, isAI, message.personalityContext?.communicationStyle]);
 
-  // Simple haptic feedback for streaming start/end
-  useEffect(() => {
-    if (message?.isStreaming && !hasStartedStreaming && isAI) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      setHasStartedStreaming(true);
-      timestampOpacity.setValue(0);
-    } else if (!message?.isStreaming && hasStartedStreaming && isAI) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setHasStartedStreaming(false);
-      setTimeout(() => {
-        Animated.timing(timestampOpacity, {
-          toValue: 1,
-          duration: 70, // Reduced from 140
-          useNativeDriver: true,
-        }).start();
-      }, 140);
-    }
-  }, [message?.isStreaming, hasStartedStreaming, isAI]);
 
   const handlePressIn = () => {
     setIsPressed(true);
@@ -339,6 +699,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
       default: return 'Standard Mode';
     }
   };
+
 
   const getSystemBubbleStyles = () => {
     return [
@@ -479,12 +840,96 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
               <View style={styles.botTextWrapper}>
                 <BotMessageContent 
                   text={message.text}
-                  isStreaming={message.isStreaming}
                   theme={theme}
                   messageId={message.id}
+                  isStreaming={message.variant === 'streaming'}
                 />
               </View>
             )}
+            
+            {/* Search Sources Section */}
+            {message.metadata?.searchResults && message.metadata?.sources && message.metadata.sources.length > 0 && !isSystem && (
+              <View style={[
+                styles.sourcesContainer,
+                {
+                  backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                  borderTopColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                }
+              ]}>
+                <View style={styles.sourcesHeader}>
+                  <FontAwesome5
+                    name="search"
+                    size={12}
+                    color={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+                  />
+                  <Text style={[
+                    styles.sourcesTitle,
+                    { color: theme === 'dark' ? '#9ca3af' : '#6b7280' }
+                  ]}>
+                    Sources
+                  </Text>
+                </View>
+                <View style={styles.sourcesList}>
+                  {message.metadata.sources.slice(0, 3).map((source, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.sourceItem,
+                        {
+                          backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        }
+                      ]}
+                      onPress={() => {
+                        try {
+                          require('expo-linking').openURL(source.url);
+                        } catch (error) {
+                          console.warn('Failed to open URL:', error);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.sourceContent}>
+                        <Text 
+                          style={[
+                            styles.sourceTitle,
+                            { color: theme === 'dark' ? '#e5e7eb' : '#374151' }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {source.title}
+                        </Text>
+                        <Text 
+                          style={[
+                            styles.sourceDomain,
+                            { color: theme === 'dark' ? '#9ca3af' : '#6b7280' }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {source.domain}
+                        </Text>
+                      </View>
+                      <FontAwesome5
+                        name="external-link-alt"
+                        size={10}
+                        color={theme === 'dark' ? '#6b7280' : '#9ca3af'}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            
+            {/* Tool Calls Section */}
+            {(() => {
+              const hasToolCalls = message.metadata?.toolCalls && message.metadata.toolCalls.length > 0;
+              
+              return hasToolCalls && !isSystem ? (
+                <ToolCallDisplay 
+                  toolCalls={message.metadata?.toolCalls || []}
+                  theme={theme}
+                />
+              ) : null;
+            })()}
             
             {/* AI Insight Section */}
             {message.aiInsight && !isSystem && (
@@ -616,7 +1061,7 @@ const styles = StyleSheet.create({
   botTextWrapper: {
     marginVertical: spacing[1] / 2,
     paddingHorizontal: spacing[1] / 2,
-    maxWidth: width * 0.85,
+    maxWidth: width * 0.95, // Stretch much further right
     alignSelf: 'flex-start',
   },
   systemBubble: {
@@ -683,6 +1128,53 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  // Search Sources Styles
+  sourcesContainer: {
+    marginTop: spacing[2],
+    borderTopWidth: 1,
+    paddingTop: spacing[2],
+    paddingHorizontal: spacing[1],
+  },
+  sourcesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+    gap: spacing[1],
+  },
+  sourcesTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sourcesList: {
+    gap: spacing[1],
+  },
+  sourceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1] + 2,
+    borderRadius: 8,
+  },
+  sourceContent: {
+    flex: 1,
+    marginRight: spacing[2],
+  },
+  sourceTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Nunito-Medium',
+    marginBottom: 2,
+  },
+  sourceDomain: {
+    fontSize: 11,
+    fontWeight: '400',
+    fontFamily: 'Nunito-Regular',
+  },
+
   aiInsightContainer: {
     marginTop: spacing[3],
     padding: spacing[2],
@@ -704,6 +1196,132 @@ const styles = StyleSheet.create({
   },
   insightSuggestion: {
     fontWeight: '500',
+  },
+
+  // Tool Call Styles
+  toolCallsContainer: {
+    marginTop: spacing[2],
+    marginBottom: spacing[1],
+    gap: spacing[2],
+  },
+  toolCallItem: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: spacing[2],
+    marginHorizontal: spacing[1] / 2,
+  },
+  toolCallHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[1],
+  },
+  toolCallInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toolIcon: {
+    marginRight: spacing[1],
+  },
+  toolCallName: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+  },
+  toolCallStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1] / 2,
+  },
+  toolCallStatusText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  toolCallParams: {
+    marginTop: spacing[1],
+    paddingTop: spacing[1],
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  toolCallParamsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: spacing[1] / 2,
+  },
+  toolCallParamsText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+    lineHeight: 16,
+  },
+  toolCallResult: {
+    marginTop: spacing[1],
+    paddingTop: spacing[1],
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  toolCallResultLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: spacing[1] / 2,
+  },
+  toolCallResultText: {
+    fontSize: 11,
+    lineHeight: 16,
+    maxHeight: 100,
+    overflow: 'hidden',
+  },
+  toolCallSummary: {
+    marginTop: spacing[2],
+    paddingTop: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  searchSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    marginBottom: spacing[1],
+  },
+  searchSummaryCount: {
+    fontSize: 11,
+    fontFamily: 'SF Pro Text',
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  topResultPreview: {
+    marginTop: spacing[1],
+    paddingLeft: spacing[3],
+  },
+  previewTitle: {
+    fontSize: 12,
+    fontFamily: 'SF Pro Text',
+    fontWeight: '500',
+    lineHeight: 16,
+    marginBottom: spacing[1] / 2,
+  },
+  previewDomain: {
+    fontSize: 10,
+    fontFamily: 'SF Pro Text',
+    fontWeight: '400',
+    letterSpacing: 0.2,
+    opacity: 0.8,
+  },
+  clickableIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing[2],
+    paddingTop: spacing[1],
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    gap: spacing[1],
+  },
+  clickableText: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: 'Nunito-Medium',
   },
 });
 

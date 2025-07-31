@@ -22,8 +22,8 @@ import OnboardingScreen from './src/screens/onboarding/OnboardingScreen';
 import SignInScreen from './src/screens/auth/SignInScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
 import ChatScreen from './src/screens/chat/ChatScreen';
-import InsightsScreen from './src/screens/insights/InsightsScreen';
-import ConnectionsScreen from './src/screens/connections/ConnectionsScreen';
+import DashboardScreen from './src/screens/insights/InsightsScreen';
+import SocialScreen from './src/screens/connections/ConnectionsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
 // Services
@@ -59,8 +59,8 @@ export type AuthStackParamList = {
 
 export type MainStackParamList = {
   Chat: undefined;
-  Insights: undefined;
-  Connections: undefined;
+  Dashboard: undefined;
+  Social: undefined;
   Profile: undefined;
 };
 
@@ -102,8 +102,8 @@ const MainStackNavigator = () => {
       }}
     >
       <MainStack.Screen name="Chat" component={ChatScreen} />
-      <MainStack.Screen name="Insights" component={InsightsScreen} />
-      <MainStack.Screen name="Connections" component={ConnectionsScreen} />
+      <MainStack.Screen name="Dashboard" component={DashboardScreen} />
+      <MainStack.Screen name="Social" component={SocialScreen} />
       <MainStack.Screen name="Profile" component={ProfileScreen} />
     </MainStack.Navigator>
   );

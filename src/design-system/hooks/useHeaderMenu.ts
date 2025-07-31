@@ -33,15 +33,15 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
           (navigation as any).navigate('Chat');
         }
         break;
-      case 'insights':
-        if (screenName !== 'insights') {
-          (navigation as any).navigate('Insights');
+      case 'dashboard':
+        if (screenName !== 'dashboard') {
+          (navigation as any).navigate('Dashboard');
         }
         break;
-      case 'connections':
       case 'social':
-        if (screenName !== 'connections') {
-          (navigation as any).navigate('Connections');
+      case 'connections':
+        if (screenName !== 'social') {
+          (navigation as any).navigate('Social');
         }
         break;
       case 'settings':

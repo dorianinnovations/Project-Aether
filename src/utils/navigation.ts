@@ -5,8 +5,8 @@ import { NavigationProp } from '@react-navigation/native';
 export type RootStackParamList = {
   Chat: undefined;
   Profile: undefined;
-  Connections: undefined;
-  Insights: undefined;
+  Social: undefined;
+  Dashboard: undefined;
   SignIn: undefined;
   SignUp: undefined;
 };

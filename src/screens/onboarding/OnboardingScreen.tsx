@@ -104,48 +104,48 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
     progressOpacity.setValue(0);
 
     // Advanced staggered sequence with precision timing
-    const staggerDelay = 80;
+    const staggerDelay = 40;
     
     Animated.stagger(staggerDelay, [
       Animated.timing(stepOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(borderOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(categoryOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.spring(titleOpacity, {
         toValue: 1,
-        tension: 180,
-        friction: 12,
+        tension: 300,
+        friction: 8,
         useNativeDriver: true,
       }),
       Animated.timing(subtitleOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(descriptionOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(accentOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(progressOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start();
@@ -159,12 +159,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
     Animated.parallel([
       Animated.timing(translateX, {
         toValue: targetX,
-        duration: 300,
+        duration: 120,
         useNativeDriver: true,
       }),
       Animated.timing(stepOpacity, {
         toValue: 0,
-        duration: 300,
+        duration: 120,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -174,7 +174,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
       // Animate in from opposite side
       Animated.timing(translateX, {
         toValue: 0,
-        duration: 400,
+        duration: 150,
         useNativeDriver: true,
       }).start(() => {
         setIsAnimating(false);

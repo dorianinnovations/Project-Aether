@@ -1,5 +1,5 @@
 /**
- * Numina - Personal Insights Dashboard
+ * Numina - Personal Dashboard
  * Numina-powered behavioral analysis and growth tracking
  */
 
@@ -42,7 +42,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 // Services
 import { AnalyticsAPI, ApiUtils, AuthAPI } from '../../services/api';
 
-interface InsightData {
+interface DashboardData {
   id: string;
   category: 'growth' | 'emotional' | 'behavioral' | 'social';
   title: string;
@@ -76,12 +76,12 @@ interface ChartData {
   }>;
 }
 
-interface InsightsScreenProps {}
+interface DashboardScreenProps {}
 
-const InsightsScreen: React.FC<InsightsScreenProps> = () => {
+const DashboardScreen: React.FC<DashboardScreenProps> = () => {
   const { theme, colors } = useTheme();
   // State
-  const [insights, setInsights] = useState<InsightData[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData[]>([]);
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [charts, setCharts] = useState<ChartData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,7 +96,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
   
   // Header menu hook
   const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
-    screenName: 'insights',
+    screenName: 'dashboard',
     onSettingsPress: () => setShowSettings(true),
     onSignOut: () => setShowSignOutModal(true)
   });
@@ -107,8 +107,8 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
   // Use colors from theme context instead of getThemeColors
   const themeColors = colors;
 
-  // Load insights data
-  const loadInsights = async (showLoading = true) => {
+  // Load dashboard data
+  const loadDashboardData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
 
     try {
@@ -203,12 +203,12 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
           // Emotional pattern analysis (UBPM patterns)
           metricsArray.push({
             id: '5',
-            name: 'Emotional Patterns',
+            name: 'Patterns',
             value: emotionalPatterns.length.toString(),
             trend: emotionalPatterns.length > 0 ? 'up' : 'neutral',
             trendValue: emotionalPatterns.length > 0 ? 'patterns found' : 'need more data',
             color: 'love',
-            subtitle: 'How your emotions change over time',
+            subtitle: 'How your UBPM changes over time',
           });
 
           // Data quality score
@@ -278,7 +278,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
 
       setMetrics(finalMetrics);
       setCharts(finalCharts);
-      setInsights([]);
+      setDashboardData([]);
 
       // Trigger entrance animations
       if (showLoading) {
@@ -290,7 +290,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
       }
 
     } catch (error: any) {
-      console.error('Failed to load insights:', error);
+      console.error('Failed to load dashboard data:', error);
       Alert.alert(
         'Error Loading Insights',
         ApiUtils.getErrorMessage(error),
@@ -306,13 +306,13 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
 
   // Load data on mount
   useEffect(() => {
-    loadInsights();
+    loadDashboardData();
   }, []);
 
   // Real-time polling for UBPM updates
   useEffect(() => {
     const interval = setInterval(() => {
-      loadInsights(false); // Refresh without loading state
+      loadDashboardData(false); // Refresh without loading state
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
@@ -325,7 +325,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
     
     // Execute API call and minimum duration in parallel for smooth UX
     await Promise.all([
-      loadInsights(false),
+      loadDashboardData(false),
       new Promise(resolve => setTimeout(resolve, 1200)) // Minimum 1.2 seconds
     ]);
   };
@@ -393,10 +393,22 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
         case 'Emotional Patterns':
           const emotionalData = emotionalPatterns.length > 0 ? emotionalPatterns : [];
           return {
-            title: 'Your Emotional Patterns',
+            title: 'Your Patterns',
             description: `${emotionalPatterns.length} emotional patterns found`,
             details: emotionalData.length > 0 ? 
-              `Emotional Patterns:\n• ${emotionalData.map((p: any) => typeof p === 'string' ? p.replace(/_/g, ' ') : JSON.stringify(p)).join('\n• ')}` :
+              `Emotional Patterns:\n\n${emotionalData.map((p: any) => {
+                if (typeof p === 'string') {
+                  return `• ${p.replace(/_/g, ' ')}`;
+                } else if (p && typeof p === 'object') {
+                  // Format object data nicely instead of JSON.stringify
+                  const type = p.type || p.pattern || 'Pattern';
+                  const intensity = p.intensity ? ` (${Math.round(p.intensity * 100)}% intensity)` : '';
+                  const frequency = p.frequency ? ` - ${p.frequency}` : '';
+                  return `• ${type}${intensity}${frequency}`;
+                } else {
+                  return `• ${p}`;
+                }
+              }).join('\n')}` :
               'No emotional patterns detected yet. Continue chatting to see your patterns emerge!'
           };
           
@@ -425,8 +437,8 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
     setShowMetricModal(true);
   };
 
-  // Render insight card
-  const renderInsightCard = (insight: InsightData) => {
+  // Render dashboard card
+  const renderDashboardCard = (item: DashboardData) => {
     const categoryColors = {
       growth: designTokens.semantic.success,
       emotional: designTokens.semantic.info,
@@ -443,51 +455,51 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
 
     return (
       <View 
-        key={insight.id}
+        key={item.id}
         style={[styles.metricCard, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}
       >
-        {/* Header with ID and Status */}
+        {/* Header with Category and Status */}
         <View style={styles.metricHeader}>
-          <Text style={[styles.metricId, { color: categoryColors[insight.category] }]}>
-            #{categoryCode[insight.category]}-{insight.id.slice(-4).toUpperCase()}
+          <Text style={[styles.metricId, { color: categoryColors[item.category] }]}>
+            {item.category.charAt(0).toUpperCase() + item.category.slice(1)} Pattern
           </Text>
-          <View style={[styles.statusIndicator, { backgroundColor: categoryColors[insight.category] }]} />
+          <View style={[styles.statusIndicator, { backgroundColor: categoryColors[item.category] }]} />
         </View>
         
         {/* Main Metric Display */}
         <View style={styles.metricDisplay}>
-          <Text style={[styles.metricValue, { color: categoryColors[insight.category] }]}>
-            {Math.round(insight.confidence * 100)}
+          <Text style={[styles.metricValue, { color: categoryColors[item.category] }]}>
+            {Math.round(item.confidence * 100)}
           </Text>
           <Text style={[styles.metricUnit, { color: themeColors.textMuted }]}>
             %CONF
           </Text>
         </View>
         
-        {/* Technical Details */}
+        {/* Insight Details */}
         <View style={styles.techDetails}>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: themeColors.textMuted }]}>
-              TYPE:
+              INSIGHT:
             </Text>
             <Text style={[styles.detailValue, { color: themeColors.text }]}>
-              {insight.category.toUpperCase()}_PATTERN
+              {item.title.length > 20 ? item.title.substring(0, 20) + '...' : item.title}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: themeColors.textMuted }]}>
-              TIMESTAMP:
+              DISCOVERED:
             </Text>
             <Text style={[styles.detailValue, { color: themeColors.text }]}>
-              {insight.timestamp}
+              {new Date(item.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: themeColors.textMuted }]}>
-              STATUS:
+              STRENGTH:
             </Text>
-            <Text style={[styles.detailValue, { color: categoryColors[insight.category] }]}>
-              ACTIVE
+            <Text style={[styles.detailValue, { color: categoryColors[item.category] }]}>
+              {item.confidence > 0.8 ? 'HIGH' : item.confidence > 0.6 ? 'MEDIUM' : 'EMERGING'}
             </Text>
           </View>
         </View>
@@ -499,14 +511,14 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
               style={[
                 styles.progressFill,
                 { 
-                  width: `${insight.confidence * 100}%`,
-                  backgroundColor: categoryColors[insight.category],
+                  width: `${item.confidence * 100}%`,
+                  backgroundColor: categoryColors[item.category],
                 }
               ]} 
             />
           </View>
           <Text style={[styles.progressLabel, { color: themeColors.textMuted }]}>
-            SIGNAL_STRENGTH
+            CONFIDENCE_LEVEL
           </Text>
         </View>
       </View>
@@ -530,7 +542,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
   );
 
   return (
-    <PageBackground theme={theme as 'light' | 'dark'} variant="insights">
+    <PageBackground theme={theme as 'light' | 'dark'} variant="dashboard">
       <SafeAreaView style={styles.container}>
         <StatusBar 
           barStyle={theme === 'light' ? 'dark-content' : 'light-content'}
@@ -591,41 +603,61 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
                 <View style={styles.overviewMain}>
                   <Text style={[styles.overviewValue, { color: designTokens.semantic.info }]}>
                     {(() => {
-                      const confidenceMetric = metrics.find(m => m.name === 'Profile Confidence');
-                      const value = confidenceMetric?.value as string;
-                      return value ? parseInt(value.replace('%', '')) : 0;
+                      const totalDataPoints = currentUbpmData?.dataPoints || 0;
+                      if (totalDataPoints === 0) return '0';
+                      if (totalDataPoints < 10) return totalDataPoints.toString();
+                      if (totalDataPoints < 100) return Math.floor(totalDataPoints / 10) * 10 + '+';
+                      return Math.floor(totalDataPoints / 100) * 100 + '+';
                     })()}
                   </Text>
                   <Text style={[styles.overviewUnit, { color: themeColors.textMuted }]}>
-                    % READY
+                    MESSAGES
                   </Text>
                 </View>
                 
                 <View style={styles.overviewStats}>
                   <View style={styles.overviewStat}>
                     <Text style={[styles.overviewStatValue, { color: designTokens.semantic.success }]}>
-                      {metrics.find(m => m.name === 'Behavior Patterns')?.value || '0'}
+                      {(() => {
+                        const commStyle = currentUbpmData?.behavioralContext?.communicationStyle || 'casual';
+                        return commStyle.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase()).join('');
+                      })()}
                     </Text>
                     <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
-                      Behaviors
+                      Style
                     </Text>
                   </View>
                   
                   <View style={styles.overviewStat}>
                     <Text style={[styles.overviewStatValue, { color: designTokens.semantic.wisdom }]}>
-                      {metrics.find(m => m.name === 'Personality Traits')?.value || '0'}
+                      {(() => {
+                        const hours = currentUbpmData?.temporalContext?.mostActiveHours || [];
+                        if (hours.length === 0) return '—';
+                        const avgHour = Math.round(hours.reduce((a: number, b: number) => a + b, 0) / hours.length);
+                        if (avgHour < 6) return 'Night';
+                        if (avgHour < 12) return 'Morning';
+                        if (avgHour < 18) return 'Day';
+                        return 'Evening';
+                      })()}
                     </Text>
                     <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
-                      Personality
+                      Active
                     </Text>
                   </View>
                   
                   <View style={styles.overviewStat}>
                     <Text style={[styles.overviewStatValue, { color: designTokens.semantic.love }]}>
-                      {metrics.find(m => m.name === 'Emotional Patterns')?.value || '0'}
+                      {(() => {
+                        const sessionLength = currentUbpmData?.temporalContext?.preferredSessionLength || 0;
+                        if (sessionLength === 0) return '—';
+                        if (sessionLength < 5) return 'Quick';
+                        if (sessionLength < 15) return 'Short';
+                        if (sessionLength < 30) return 'Medium';
+                        return 'Long';
+                      })()}
                     </Text>
                     <Text style={[styles.overviewStatLabel, { color: themeColors.textMuted }]}>
-                      Emotions
+                      Sessions
                     </Text>
                   </View>
                 </View>
@@ -638,9 +670,12 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
                       styles.overviewProgressFill,
                       { 
                         width: `${(() => {
-                          const confidenceMetric = metrics.find(m => m.name === 'Profile Confidence');
-                          const value = confidenceMetric?.value as string;
-                          return value ? parseInt(value.replace('%', '')) : 0;
+                          const totalMessages = currentUbpmData?.dataPoints || 0;
+                          // More realistic progress based on actual data
+                          if (totalMessages === 0) return 0;
+                          if (totalMessages < 10) return Math.min(totalMessages * 8, 80);
+                          if (totalMessages < 50) return Math.min(80 + (totalMessages - 10) * 2, 95);
+                          return 100;
                         })()}%`,
                         backgroundColor: designTokens.semantic.info,
                       }
@@ -648,7 +683,14 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
                   />
                 </View>
                 <Text style={[styles.overviewProgressLabel, { color: themeColors.textMuted }]}>
-                  ANALYSIS_PROGRESS
+                  {(() => {
+                    const totalMessages = currentUbpmData?.dataPoints || 0;
+                    if (totalMessages === 0) return 'START_CHATTING';
+                    if (totalMessages < 10) return 'LEARNING_BASICS';
+                    if (totalMessages < 25) return 'BUILDING_PROFILE'; 
+                    if (totalMessages < 50) return 'UNDERSTANDING_PATTERNS';
+                    return 'PROFILE_COMPLETE';
+                  })()}
                 </Text>
               </View>
             </View>
@@ -693,7 +735,7 @@ const InsightsScreen: React.FC<InsightsScreenProps> = () => {
               Getting to Know You
             </Text>
             <Text style={[styles.emptyStateText, { color: themeColors.textSecondary }]}>
-              The more you chat with Numina, the better it understands your personality, communication style, and emotional patterns. Start a conversation to see your insights grow!
+              The more you chat with, the better your AI understands your personality, communication style, and emotional patterns. Start a conversation to see your dashboard grow!
             </Text>
           </View>
         )}
@@ -875,7 +917,7 @@ const styles = StyleSheet.create({
   },
 
   // Sections
-  insightsSection: {
+  dashboardSection: {
     marginHorizontal: spacing[3], // Match chat page margins
     marginVertical: spacing[4],
   },
@@ -1013,4 +1055,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InsightsScreen;
+export default DashboardScreen;

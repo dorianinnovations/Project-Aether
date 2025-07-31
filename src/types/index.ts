@@ -18,8 +18,17 @@ export interface Message {
   metadata?: MessageMetadata;
 }
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  parameters: any;
+  result?: any;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+}
+
 export interface MessageMetadata {
   toolUsed?: string;
+  toolCalls?: ToolCall[];
   confidence?: number;
   processingTime?: number;
 }

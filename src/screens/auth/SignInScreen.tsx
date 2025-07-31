@@ -30,7 +30,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../design-system/tokens/typography';
 import { spacing } from '../../design-system/tokens/spacing';
 import { AuthAPI, ApiUtils } from '../../services/api';
-import { safeNavigateBack } from '../../utils/navigation';
+import { goBack } from '../../utils/navigation';
 
 const { height } = Dimensions.get('window');
 

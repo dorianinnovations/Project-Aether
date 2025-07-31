@@ -8,6 +8,7 @@ export { HeaderMenu } from './HeaderMenu';
 export { SignOutModal } from './SignOutModal';
 export { MetricDetailModal } from './MetricDetailModal';
 export { EnhancedSwipeableTabBar } from './EnhancedSwipeableTabBar';
+// SearchResultsModal removed - sources shown inline in message bubbles
 
 export { default as HeaderDefault } from './Header';
 export { default as HeaderMenuDefault } from './HeaderMenu';

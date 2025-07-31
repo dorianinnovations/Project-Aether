@@ -25,7 +25,8 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 
 // Enhanced Components
-import { EnhancedMessageBubble, EnhancedChatInput } from '../../design-system/components/molecules';
+import { EnhancedChatInput } from '../../design-system/components/molecules';
+import EnhancedBubble from '../../design-system/components/molecules/EnhancedBubble';
 import { Header, HeaderMenu, SignOutModal } from '../../design-system/components/organisms';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
 import SettingsModal from './SettingsModal';
@@ -51,6 +52,8 @@ import { useHeaderMenu } from '../../design-system/hooks';
 import { ChatAPI, ApiUtils, ConversationAPI, AuthAPI, TokenManager } from '../../services/api';
 
 // Types
+import { ToolCall } from '../../types';
+
 interface Message {
   id: string;
   sender: 'user' | 'numina' | 'system';
@@ -59,6 +62,7 @@ interface Message {
   variant?: 'default' | 'streaming' | 'error' | 'tool';
   metadata?: {
     toolUsed?: string;
+    toolCalls?: ToolCall[];
     confidence?: number;
     processingTime?: number;
   };
@@ -67,6 +71,14 @@ interface Message {
 interface ChatScreenProps {}
 
 const { height: screenHeight } = Dimensions.get('window');
+
+// Helper function to detect and create tool calls from message content
+// DISABLED: Tool calls should come from the backend API, not client-side detection
+const detectToolUsage = (messageContent: string): ToolCall[] => {
+  // Completely disabled to prevent false positives during normal chat
+  // Tool calls should be provided by the backend API response
+  return [];
+};
 
 const ChatScreen: React.FC<ChatScreenProps> = () => {
   const navigation = useNavigation();
@@ -77,7 +89,6 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
   
@@ -86,6 +97,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  
   
   // Dynamic greeting state
   const [userName, setUserName] = useState<string>('');
@@ -214,8 +226,6 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     }
   }, [messages]);
 
-  // Streaming message state
-  const [streamingMessage, setStreamingMessage] = useState<Message | null>(null);
   
   // Settings modal state
   const [showSettings, setShowSettings] = useState(false);
@@ -225,44 +235,32 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
   // Handle sending message
   const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
+    // Allow sending if there's text OR attachments
+    if ((!inputText.trim() && attachments.length === 0) || isLoading) return;
 
     // Hide greeting on first message
     if (showGreeting) {
       setShowGreeting(false);
     }
 
+    // Prepare message text - use input text or default for photo-only messages
+    const messageText = inputText.trim() || (attachments.length > 0 ? "📸 Photo" : "");
+    
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      message: inputText.trim(),
+      message: messageText,
       timestamp: new Date().toISOString(),
     };
 
     // Add user message
     setMessages(prev => [...prev, userMessage]);
-    const messageText = inputText.trim();
     setInputText('');
     setIsLoading(true);
-    setIsTyping(true);
-
-    // Add typing indicator
-    const typingMessage: Message = {
-      id: 'typing',
-      sender: 'numina',
-      message: '',
-      timestamp: '',
-    };
-    setMessages(prev => [...prev, typingMessage]);
 
     try {
-      // No artificial delays - start streaming immediately!
-
-      // Send to AI with real SSE streaming
-      const startTime = Date.now();
-      
-      // Remove typing indicator and create streaming message
-      const streamingMsg: Message = {
+      // Create streaming message
+      const streamingMessage: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'numina',
         message: '',
@@ -273,90 +271,56 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         },
       };
 
-      setMessages(prev => [
-        ...prev.filter(msg => msg.id !== 'typing'),
-        streamingMsg
-      ]);
-      setStreamingMessage(streamingMsg);
-
-      // Real SSE streaming - as fast as server sends!
-      let accumulatedText = '';
-      let hasReceivedData = false;
+      setMessages(prev => [...prev, streamingMessage]);
       
-      try {
-        for await (const chunk of ChatAPI.streamMessage(messageText)) {
-          hasReceivedData = true;
-          accumulatedText += chunk;
-          
-          setMessages(prev => prev.map(msg => 
-            msg.id === streamingMsg.id 
-              ? { ...msg, message: accumulatedText }
-              : msg
-          ));
-        }
-      } catch (streamError) {
-        // If streaming failed and we haven't received any data, try non-streaming
-        if (!hasReceivedData) {
-          try {
-            const fallbackResponse = await ChatAPI.sendMessage(messageText, false);
-            accumulatedText = fallbackResponse.content;
-            
-            setMessages(prev => prev.map(msg => 
-              msg.id === streamingMsg.id 
-                ? { ...msg, message: accumulatedText }
-                : msg
-            ));
-          } catch (fallbackError) {
-            throw streamError; // Re-throw original streaming error
-          }
-        } else {
-          throw streamError; // Re-throw if we had partial streaming data
-        }
+      // Start streaming with word animation
+      let accumulatedText = '';
+      let wordCount = 0;
+      
+      for await (const chunk of ChatAPI.streamMessageWords(messageText, '/ai/adaptive-chat', attachments)) {
+        // For word animation, each chunk is a complete word - add with space
+        accumulatedText += (accumulatedText ? ' ' : '') + chunk;
+        wordCount++;
+        
+        // Update the streaming message while keeping streaming variant
+        setMessages(prev => prev.map(msg => 
+          msg.id === streamingMessage.id 
+            ? { ...msg, message: accumulatedText, variant: 'streaming', timestamp: new Date().toISOString() }
+            : msg
+        ));
       }
-
+      
       // Mark as complete
-      const processingTime = Date.now() - startTime;
       setMessages(prev => prev.map(msg => 
-        msg.id === streamingMsg.id 
-          ? { 
-              ...msg, 
-              variant: 'default',
-              metadata: {
-                ...msg.metadata,
-                processingTime,
-              }
-            }
+        msg.id === streamingMessage.id 
+          ? { ...msg, variant: 'default' }
           : msg
       ));
-
-      setStreamingMessage(null);
       
-      // Haptic feedback for successful response
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setAttachments([]);
+      
+      // Sync haptic with final word's opacity animation completion
+      // Final word delay: (wordCount-1) * 15ms + 80ms duration
+      const finalWordAnimationTime = Math.max(0, (wordCount - 1) * 15) + 80;
+      setTimeout(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }, finalWordAnimationTime);
 
     } catch (error: any) {
       console.error('Chat Error:', error);
       
-      // Remove typing indicator
-      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
-      
-      // Add error message
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'numina',
-        message: `I apologize, but I encountered an error: ${ApiUtils.getErrorMessage(error)}. Please try again.`,
+        id: Date.now().toString(),
+        sender: 'system',
+        message: `Error: ${error.message || 'Failed to send message'}`,
         timestamp: new Date().toISOString(),
         variant: 'error',
       };
-
+      
       setMessages(prev => [...prev, errorMessage]);
-      
-      // Haptic feedback for error
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      
     } finally {
       setIsLoading(false);
-      setIsTyping(false);
     }
   };
 
@@ -536,22 +500,26 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     handleSend();
   };
 
+
   // Render message item
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    // Transform the message format for EnhancedMessageBubble
+    // Transform the message format for message bubble
     const enhancedMessage = {
       id: item.id,
       text: item.message,
       sender: item.sender,
       timestamp: item.timestamp,
+      variant: item.variant,
       isStreaming: item.variant === 'streaming',
       isSystem: item.sender === 'system',
       metadata: item.metadata,
     };
-
+    
+    // Use the enhanced bubble with word animation
+    const MessageComponent = EnhancedBubble;
 
     return (
-      <EnhancedMessageBubble
+      <MessageComponent
         key={item.id}
         message={enhancedMessage}
         index={index}
@@ -614,6 +582,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
               theme={theme}
             />
           </TouchableOpacity>
+          
           
           <TouchableOpacity 
             style={styles.headerButton}
@@ -717,6 +686,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
           onHide={() => setShowCopyTooltip(false)}
         />
         
+
         <EnhancedChatInput
           value={inputText}
           onChangeText={setInputText}

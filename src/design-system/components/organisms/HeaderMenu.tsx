@@ -47,15 +47,15 @@ const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
     requiresAuth: false 
   },
   { 
-    icon: <Feather name="bar-chart-2" size={16} color={getIconColor('insights', theme)} />, 
-    label: 'Insights', 
-    key: 'insights', 
+    icon: <Feather name="bar-chart-2" size={16} color={getIconColor('dashboard', theme)} />, 
+    label: 'Dashboard', 
+    key: 'dashboard', 
     requiresAuth: false 
   },
   { 
-    icon: <Feather name="users" size={16} color={getIconColor('connections', theme)} />, 
-    label: 'Connections', 
-    key: 'connections', 
+    icon: <Feather name="users" size={16} color={getIconColor('social', theme)} />, 
+    label: 'Social', 
+    key: 'social', 
     requiresAuth: false 
   },
   { 

@@ -20,8 +20,8 @@ jest.mock('../../services/api', () => ({
     getConnections: jest.fn(),
     createConnection: jest.fn(),
   },
-  InsightsAPI: {
-    getUserInsights: jest.fn(),
+  DashboardAPI: {
+    getUserDashboardData: jest.fn(),
     getPersonalityMetrics: jest.fn(),
   },
   ApiUtils: {},
@@ -270,8 +270,8 @@ describe('Complete User Journey Integration Tests', () => {
         'navigated_to_connections',
         'connections_screen_loaded',
         'connection_profile_viewed',
-        'navigated_to_insights',
-        'insights_screen_loaded',
+        'navigated_to_dashboard',
+        'dashboard_screen_loaded',
         'personality_metrics_viewed',
         'behavioral_patterns_analyzed',
         'navigated_back_to_chat',

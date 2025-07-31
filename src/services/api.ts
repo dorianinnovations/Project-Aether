@@ -7,7 +7,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API Configuration
-const API_BASE_URL = 'https://server-a7od.onrender.com';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://server-a7od.onrender.com';
 const AUTH_TOKEN_KEY = '@numina_auth_token';
 const USER_DATA_KEY = '@numina_user_data';
 
@@ -297,7 +297,36 @@ export const AuthAPI = {
 
 // Chat API
 export const ChatAPI = {
-  async sendMessage(prompt: string, stream: boolean = false): Promise<ChatResponse> {
+  async sendMessage(prompt: string, stream: boolean = true, attachments?: any[]): Promise<ChatResponse> {
+    // If we have attachments (photos), use FormData for multipart upload
+    if (attachments && attachments.length > 0) {
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      formData.append('stream', stream.toString());
+      
+      // Add photo attachments
+      attachments.forEach((attachment, index) => {
+        if (attachment.type === 'image') {
+          const imageFile = {
+            uri: attachment.uri,
+            type: attachment.mimeType || 'image/jpeg',
+            name: attachment.name || `photo_${index}.jpg`,
+          } as any;
+          
+          formData.append('photos', imageFile);
+        }
+      });
+      
+      const response = await api.post<ChatResponse>('/ai/adaptive-chat', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return response.data;
+    }
+    
+    // Standard text-only message
     const response = await api.post<ChatResponse>('/ai/adaptive-chat', {
       prompt,
       stream,
@@ -306,7 +335,7 @@ export const ChatAPI = {
     return response.data;
   },
 
-  async sendAdaptiveMessage(message: string, stream: boolean = false): Promise<ChatResponse> {
+  async sendAdaptiveMessage(message: string, stream: boolean = true): Promise<ChatResponse> {
     const response = await api.post<ChatResponse>('/personalized-ai/contextual-chat', {
       message,
       stream,
@@ -315,24 +344,18 @@ export const ChatAPI = {
     return response.data;
   },
 
-  // Clean streaming implementation optimized for React Native
-  async *streamMessage(prompt: string, endpoint: string = '/ai/adaptive-chat'): AsyncGenerator<string, void, unknown> {
-    try {
-      // Use the clean streaming service
-      const { ChatStreaming } = await import('./cleanStreaming');
-      
-      for await (const chunk of ChatStreaming.streamMessage(prompt, endpoint)) {
-        yield chunk;
-      }
-      
-    } catch (error) {
-      throw error;
-    }
+  // Fresh streaming implementation (stable)
+  async *streamMessage(prompt: string, endpoint: string = '/ai/adaptive-chat', attachments?: any[]): AsyncGenerator<string, void, unknown> {
+    const { StreamingService } = await import('./streaming');
+    yield* StreamingService.streamChat(prompt, endpoint, attachments);
   },
 
-  async *streamAdaptiveMessage(message: string): AsyncGenerator<string, void, unknown> {
-    yield* this.streamMessage(message, '/personalized-ai/contextual-chat');
+  // StreamEngine - Proprietary word-based streaming
+  async *streamMessageWords(prompt: string, endpoint: string = '/ai/adaptive-chat', attachments?: any[]): AsyncGenerator<string, void, unknown> {
+    const { StreamEngine } = await import('./StreamEngine');
+    yield* StreamEngine.streamChat(prompt, endpoint, attachments);
   },
+
 };
 
 // User API
@@ -383,7 +406,7 @@ export const UserAPI = {
   },
 };
 
-// Analytics API
+// Analytics API - Enhanced with Real Cognitive Engine
 export const AnalyticsAPI = {
   async getPersonalInsights(): Promise<any> {
     const response = await api.get('/personal-insights/growth-summary');
@@ -419,6 +442,22 @@ export const AnalyticsAPI = {
   // NEW: Get collective emotions data (the real chart data)
   async getCollectiveEmotions(): Promise<any> {
     const response = await api.get('/collective-data/emotions');
+    return response.data;
+  },
+
+  // GOD-TIER: Real UBPM Cognitive Engine APIs
+  async getRealUBPMAnalysis(): Promise<any> {
+    const response = await api.get('/ubpm/analysis');
+    return response.data;
+  },
+
+  async analyzeMessage(message: string): Promise<any> {
+    const response = await api.post('/ubpm/analyze-message', { message });
+    return response.data;
+  },
+
+  async getCognitivePatterns(): Promise<any> {
+    const response = await api.get('/ubpm/cognitive-patterns');
     return response.data;
   },
 };

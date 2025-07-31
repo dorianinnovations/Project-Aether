@@ -546,18 +546,18 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                 style={[
                   styles.attachmentButton,
                   {
-                    backgroundColor: 'rgba(100, 149, 237, 0.1)',
-                    borderColor: 'rgba(100, 149, 237, 0.2)',
+                    backgroundColor: 'rgba(255, 179, 209, 0.1)',
+                    borderColor: 'rgba(255, 179, 209, 0.2)',
                   }
                 ]}
                 onPress={handleCameraPress}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="camera" size={16} color="#6495ed" />
+                <FontAwesome5 name="camera" size={16} color={designTokens.pastels.pink} />
                 <Text style={[
                   styles.attachmentButtonText,
                   typography.textStyles.caption,
-                  { color: '#6495ed' }
+                  { color: designTokens.pastels.pink }
                 ]}>Camera</Text>
               </TouchableOpacity>
 
@@ -566,18 +566,18 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                 style={[
                   styles.attachmentButton,
                   {
-                    backgroundColor: 'rgba(147, 112, 219, 0.1)',
-                    borderColor: 'rgba(147, 112, 219, 0.2)',
+                    backgroundColor: 'rgba(135, 232, 222, 0.1)',
+                    borderColor: 'rgba(135, 232, 222, 0.2)',
                   }
                 ]}
                 onPress={handleGalleryPress}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="image" size={16} color="#9370db" />
+                <FontAwesome5 name="image" size={16} color={designTokens.pastels.cyan} />
                 <Text style={[
                   styles.attachmentButtonText,
                   typography.textStyles.caption,
-                  { color: '#9370db' }
+                  { color: designTokens.pastels.cyan }
                 ]}>Gallery</Text>
               </TouchableOpacity>
 
@@ -586,18 +586,18 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                 style={[
                   styles.attachmentButton,
                   {
-                    backgroundColor: 'rgba(255, 140, 0, 0.1)',
-                    borderColor: 'rgba(255, 140, 0, 0.2)',
+                    backgroundColor: 'rgba(144, 238, 144, 0.1)',
+                    borderColor: 'rgba(144, 238, 144, 0.2)',
                   }
                 ]}
                 onPress={handleDocumentPress}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="file-alt" size={16} color="#ff8c00" />
+                <FontAwesome5 name="file-alt" size={16} color={designTokens.pastels.green} />
                 <Text style={[
                   styles.attachmentButtonText,
                   typography.textStyles.caption,
-                  { color: '#ff8c00' }
+                  { color: designTokens.pastels.green }
                 ]}>Files</Text>
               </TouchableOpacity>
             </>

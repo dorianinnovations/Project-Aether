@@ -42,7 +42,8 @@ export const clearStorage = async (): Promise<void> => {
 
 export const getAllStorageKeys = async (): Promise<string[]> => {
   try {
-    return await AsyncStorage.getAllKeys();
+    const keys = await AsyncStorage.getAllKeys();
+    return [...keys];
   } catch (error) {
     console.error('Error getting storage keys:', error);
     return [];
