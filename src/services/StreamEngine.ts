@@ -114,7 +114,7 @@ export class StreamEngine {
           const word = words[i];
           if (word.trim()) { // Only yield non-whitespace words
             yield word;
-            await new Promise(resolve => setTimeout(resolve, 40)); // Much faster streaming
+            await new Promise(resolve => setTimeout(resolve, 5)); // Lightning-fast streaming
           }
         }
         
@@ -126,7 +126,7 @@ export class StreamEngine {
         
       } else {
         // Wait for more chunks
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 10)); // Ultra-fast polling
       }
     }
     

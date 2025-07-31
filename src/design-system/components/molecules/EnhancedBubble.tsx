@@ -19,12 +19,11 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import LottieView from 'lottie-react-native';
-import { designTokens, getThemeColors, getUserMessageColor, getStandardBorder } from '../../tokens/colors';
+import { designTokens, getThemeColors, getUserMessageColor, getStandardBorder, getCyclingPastelColor } from '../../tokens/colors';
 import { typography } from '../../tokens/typography';
 import { spacing, borderRadius } from '../../tokens/spacing';
 import { getNeumorphicStyle } from '../../tokens/shadows';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
-import MarkdownText from '../atoms/MarkdownText';
 import { ToolCall } from '../../../types';
 
 const { width } = Dimensions.get('window');
@@ -85,45 +84,33 @@ interface AnimatedMessageBubbleProps {
   colorfulBubblesEnabled?: boolean;
 }
 
-// StreamWord - Proprietary word animation component
-const StreamWord: React.FC<{
-  word: string;
-  index: number;
+// Simple streaming text - no animations, no markdown
+const StreamingText: React.FC<{
+  text: string;
   theme: 'light' | 'dark';
-  isLast: boolean;
-}> = ({ word, index, theme, isLast }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const delay = index * 15; // Very fast stagger
-    
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 80, // Very fast fade
-      delay,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-  }, [opacity, index]);
+  isStreaming?: boolean;
+}> = ({ text, theme, isStreaming = false }) => {
+  const textStyle = {
+    fontSize: 17,
+    lineHeight: 26,
+    letterSpacing: -0.2,
+    fontFamily: 'Nunito-Regular',
+    fontWeight: '400' as '400',
+    color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
+  };
 
   return (
-    <Animated.Text
-      style={{
-        opacity,
-        fontSize: 17,
-        lineHeight: 26,
-        letterSpacing: -0.2,
-        fontFamily: 'Nunito-Regular',
-        fontWeight: '400',
-        color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
-      }}
-    >
-      {word}{isLast ? '' : ' '}
-    </Animated.Text>
+    <View>
+      <Text style={textStyle}>
+        {text}
+        {isStreaming && '|'}
+      </Text>
+    </View>
   );
 };
 
-// StreamContent - Proprietary bot message renderer
+
+// StreamContent - Simple streaming text
 const StreamContent: React.FC<{
   text: string | undefined;
   theme: 'light' | 'dark';
@@ -137,7 +124,7 @@ const StreamContent: React.FC<{
   if (isTypingMessage || (isStreaming && !safeText.trim())) {
     return (
       <LottieView
-        source={require('../../../../assets/BotMessageLottie.json')}
+        source={require('../../../../assets/NuminaCloudBubble.json')}
         autoPlay
         loop
         style={styles.lottieAnimation}
@@ -145,22 +132,13 @@ const StreamContent: React.FC<{
     );
   }
   
-  // Split text into words for animation
-  const words = safeText.split(/(\s+)/).filter(word => word.trim());
-  
   return (
     <View style={styles.botTextContainer}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        {words.map((word, index) => (
-          <StreamWord
-            key={`${messageId}-word-${index}`}
-            word={word}
-            index={index}
-            theme={theme}
-            isLast={index === words.length - 1}
-          />
-        ))}
-      </View>
+      <StreamingText 
+        text={safeText}
+        theme={theme}
+        isStreaming={isStreaming}
+      />
     </View>
   );
 };
@@ -222,7 +200,7 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = ({
         disabled={isSystem}
       >
         {isUser ? (
-          // User messages - exact copy from EnhancedMessageBubble
+          // User messages
           <View style={styles.userMessageContainer}>
             {message.text?.trim() && (
               <Animated.View style={[
@@ -315,8 +293,8 @@ const styles = StyleSheet.create({
     ...typography.textStyles.body,
   },
   lottieAnimation: {
-    width: 50,
-    height: 30,
+    width: 76.5, // Reduced by 15% from 90
+    height: 46.75, // Reduced by 15% from 55
     alignSelf: 'flex-start',
   },
 });

@@ -25,13 +25,13 @@ export const LottieLoader: React.FC<LottieLoaderProps> = ({
     
     switch (size) {
       case 'small':
-        return 20;
+        return 35;
       case 'medium':
-        return 30;
+        return 45;
       case 'large':
-        return 42;
+        return 65;
       default:
-        return 30;
+        return 45;
     }
   };
 
@@ -40,7 +40,7 @@ export const LottieLoader: React.FC<LottieLoaderProps> = ({
   return (
     <View style={[styles.container, style]}>
       <LottieView
-        source={require('../../../../assets/Lottieabstractliquirdspinner.json')}
+        source={require('../../../../assets/NuminaSpinner.json')}
         autoPlay
         loop
         style={{

@@ -15,6 +15,7 @@ import {
   Text,
   Easing,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { FontAwesome5, Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -59,6 +60,7 @@ interface ChatInputProps {
   onAttachmentsChange?: (attachments: MessageAttachment[]) => void;
   isTabBarHidden?: boolean;
   colorfulBubblesEnabled?: boolean;
+  onFocus?: () => void;
 }
 
 export const EnhancedChatInput: React.FC<ChatInputProps> = ({
@@ -78,11 +80,14 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
   attachments = [],
   onAttachmentsChange,
   colorfulBubblesEnabled = false,
+  onFocus,
 }) => {
   const themeColors = getThemeColors(theme);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentButtonsVisible, setAttachmentButtonsVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardAnim = useRef(new Animated.Value(0)).current;
   
   // Animated values for smooth animations
   const voiceAnimScale = useRef(new Animated.Value(1)).current;
@@ -300,7 +305,10 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
       duration: 150,
       useNativeDriver: false,
     }).start();
-  }, [inputFocusAnim]);
+    
+    // Call parent's onFocus if provided
+    onFocus?.();
+  }, [inputFocusAnim, onFocus]);
 
   const handleInputBlur = useCallback(() => {
     Animated.timing(inputFocusAnim, {
@@ -310,8 +318,16 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
     }).start();
   }, [inputFocusAnim]);
 
+
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      {
+        zIndex: 1000,
+        elevation: 1000,
+      }
+    ]}>
       {/* Character Count */}
       {value.length > maxLength * 0.8 && (
         <View style={styles.characterCount}>
@@ -334,6 +350,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
         styles.floatingContainer,
         getGlassmorphicStyle('input', theme),
         {
+          backgroundColor: themeColors.surface,
           borderColor: themeColors.borders.default,
           borderWidth: 1,
           borderBottomWidth: attachmentButtonsAnim.interpolate({
@@ -348,11 +365,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
             inputRange: [0, 1],
             outputRange: [16, 0],
           }),
-          // ELASTIC STRETCHING EFFECT
-          height: attachmentButtonsAnim.interpolate({
-            inputRange: [0, 0.3, 1],
-            outputRange: [68, 75, 68], // Slight stretch then back
-          }),
+          minHeight: 24,
           // SHADOW CONTINUITY FOR DEPTH ILLUSION
           shadowRadius: attachmentButtonsAnim.interpolate({
             inputRange: [0, 1],
@@ -392,69 +405,63 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                 }
               ]}
               value={value}
-              onChangeText={(text) => {
-                if (text.endsWith('\n')) {
-                  const messageText = text.slice(0, -1);
-                  onChangeText(messageText);
-                  handleSendPress();
-                } else {
-                  onChangeText(text);
-                }
-              }}
+              onChangeText={onChangeText}
               placeholder={hasImageOnlyMessage ? "Image ready to analyze..." : placeholder}
               placeholderTextColor={themeColors.textMuted}
               keyboardAppearance={theme}
               multiline={true}
-              numberOfLines={1}
               maxLength={maxLength}
               onSubmitEditing={handleSendPress}
-              returnKeyType="send"
+              returnKeyType="default"
               blurOnSubmit={false}
               scrollEnabled={true}
               textBreakStrategy="balanced"
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
               editable={!isLoading}
-              textAlignVertical="center"
+              textAlignVertical="top"
             />
           </Animated.View>
 
-          {/* Attachment Button */}
-          {enableFileUpload && (
-            <TouchableOpacity
-              style={styles.attachmentToggleButton}
-              onPress={toggleAttachmentButtons}
-              activeOpacity={0.7}
-            >
-              <FontAwesome5 
-                name={attachmentButtonsVisible ? "times" : "paperclip"} 
-                size={16} 
-                color={themeColors.textSecondary} 
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Voice Button */}
-          {voiceEnabled && isInputEmpty && !hasAttachments && (
-            <Animated.View style={[
-              styles.voiceButton,
-              { transform: [{ scale: voiceAnimScale }] }
-            ]}>
+          {/* Button Group Container */}
+          <View style={styles.buttonGroup}>
+            {/* Attachment Button */}
+            {enableFileUpload && (
               <TouchableOpacity
-                onPress={handleVoicePress}
+                style={styles.attachmentToggleButton}
+                onPress={toggleAttachmentButtons}
                 activeOpacity={0.7}
-                style={styles.voiceButtonInner}
               >
-                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                  <FontAwesome5
-                    name="microphone"
-                    size={16}
-                    color={isVoiceActive ? designTokens.semantic.error : themeColors.textSecondary}
-                  />
-                </Animated.View>
+                <FontAwesome5 
+                  name={attachmentButtonsVisible ? "times" : "paperclip"} 
+                  size={16} 
+                  color={themeColors.textSecondary} 
+                />
               </TouchableOpacity>
-            </Animated.View>
-          )}
+            )}
+
+            {/* Voice Button */}
+            {voiceEnabled && isInputEmpty && !hasAttachments && (
+              <Animated.View style={[
+                styles.voiceButton,
+                { transform: [{ scale: voiceAnimScale }] }
+              ]}>
+                <TouchableOpacity
+                  onPress={handleVoicePress}
+                  activeOpacity={0.7}
+                  style={styles.voiceButtonInner}
+                >
+                  <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                    <FontAwesome5
+                      name="microphone"
+                      size={16}
+                      color={isVoiceActive ? designTokens.semantic.error : themeColors.textSecondary}
+                    />
+                  </Animated.View>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </View>
 
           {/* Send Button */}
           <View style={styles.sendButtonContainer}>
@@ -475,12 +482,12 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                 }
               ]}>
                 {isLoading || isUploading ? (
-                  <LottieLoader size={25} />
+                  <LottieLoader size={40} />
                 ) : (
                   <FontAwesome5
                     name={hasImageOnlyMessage ? "eye" : "arrow-up"}
                     size={18}
-                    color={canSend ? '#1DA1F2' : themeColors.textMuted}
+                    color={canSend ? (theme === 'dark' ? '#4CB8FF' : '#5CC7E8') : themeColors.textMuted}
                   />
                 )}
               </Animated.View>
@@ -655,44 +662,44 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: spacing[1],
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[2],
     position: 'relative',
     overflow: 'hidden',
-    height: 68, 
-    minHeight: 68,
-    maxHeight: 68,
+    minHeight: 50,
     justifyContent: 'center',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[1],
+    gap: -spacing[1],
     position: 'relative',
   },
   inputContainer: {
     flex: 1,
     borderRadius: 20,
     paddingHorizontal: spacing[3],
-    paddingVertical: 2,
-    height: 44,
-    minHeight: 44,
-    maxHeight: 44,
-    justifyContent: 'center',
-    overflow: 'hidden',
+    paddingVertical: spacing[1],
+    minHeight: 19,
+    maxHeight: 100,
+    justifyContent: 'flex-start',
   },
   textInput: {
-    height: 44,
-    minHeight: 44,
-    maxHeight: 44,
-    paddingVertical: 1,
-    fontSize: 17,
-    lineHeight: 24,
+    minHeight: 19,
+    maxHeight: 100,
+    paddingTop: 4,
+    paddingBottom: 4,
+    fontSize: 16,
+    lineHeight: 20,
     letterSpacing: -0.2,
     fontFamily: 'Nunito-Regular',
     fontWeight: '400',
     textAlign: 'left',
-    flexWrap: 'wrap',
-    overflow: 'hidden',
+    textAlignVertical: 'top',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: -39,
   },
   attachmentToggleButton: {
     width: 40,
@@ -701,7 +708,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   voiceButton: {
-    // Remove marginBottom for alignment
+    marginLeft: -15,
   },
   voiceButtonInner: {
     width: 40,
@@ -714,8 +721,8 @@ const styles = StyleSheet.create({
     // Remove marginBottom for alignment
   },
   sendButton: {
-    width: 60,
-    height: 40,
+    width: 70,
+    height: 36,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -758,7 +765,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[1],
     borderRadius: 12,
     borderWidth: 1,
     gap: spacing[2],
@@ -777,7 +784,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[1],
     borderRadius: 8,
     marginHorizontal: spacing[2],
   },

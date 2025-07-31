@@ -11,6 +11,5 @@ export { default as MetricCard } from './MetricCard';
 
 // Enhanced components from numina-mobile
 export { EnhancedChatInput } from './EnhancedChatInput';
-export { EnhancedMessageBubble } from './EnhancedMessageBubble';
+export { default as EnhancedBubble } from './EnhancedBubble';
 export { default as EnhancedChatInputDefault } from './EnhancedChatInput';
-export { default as EnhancedMessageBubbleDefault } from './EnhancedMessageBubble';

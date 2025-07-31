@@ -121,9 +121,9 @@ for await (const chunk of ChatAPI.streamMessage(messageText)) {
 ### Loading Animation
 
 The typing indicator uses a Lottie animation:
-- File: `assets/BotMessageLottie.json`
-- Size: 50x28 pixels
-- Minimal padding for compact display
+- File: `assets/NuminaCloudBubble.json`
+- Custom Numina-branded cloud bubble animation
+- Optimized for bot message loading states
 
 ## Authentication
 

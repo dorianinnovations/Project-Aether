@@ -300,7 +300,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       setAttachments([]);
       
       // Sync haptic with final word's opacity animation completion
-      // Final word delay: (wordCount-1) * 15ms + 80ms duration
+      // Final word delay: (wordCount-1) * 15ms + 80ms duration - back to original
       const finalWordAnimationTime = Math.max(0, (wordCount - 1) * 15) + 80;
       setTimeout(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -703,6 +703,12 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
           attachments={attachments}
           onAttachmentsChange={setAttachments}
           colorfulBubblesEnabled={settings.colorfulBubblesEnabled}
+          onFocus={() => {
+            // Scroll to bottom when input is focused
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+          }}
         />
       </KeyboardAvoidingView>
       
