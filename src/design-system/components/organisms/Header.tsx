@@ -31,12 +31,14 @@ interface HeaderProps {
   showConversationsButton?: boolean;
   showQuickAnalyticsButton?: boolean;
   showSearchButton?: boolean;
+  showDynamicOptionsButton?: boolean;
   onBackPress?: () => void;
   onMenuPress?: () => void;
   onConversationsPress?: () => void;
   onQuickAnalyticsPress?: () => void;
   onTitlePress?: () => void;
   onSearchPress?: () => void;
+  onDynamicOptionsPress?: () => void;
   theme?: 'light' | 'dark';
   isVisible?: boolean;
   isMenuOpen?: boolean;
@@ -45,6 +47,7 @@ interface HeaderProps {
   onSearchChange?: (query: string) => void;
   searchPlaceholder?: string;
   style?: any;
+  rightIcon?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -55,12 +58,14 @@ export const Header: React.FC<HeaderProps> = ({
   showConversationsButton = false,
   showQuickAnalyticsButton = false,
   showSearchButton = false,
+  showDynamicOptionsButton = false,
   onBackPress,
   onMenuPress,
   onConversationsPress,
   onQuickAnalyticsPress,
   onTitlePress,
   onSearchPress,
+  onDynamicOptionsPress,
   theme = 'light',
   isVisible = true,
   isMenuOpen = false,
@@ -69,6 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   searchPlaceholder = 'Search...',
   style,
+  rightIcon,
 }) => {
   const themeColors = getThemeColors(theme as 'light' | 'dark');
   const [backPressed, setBackPressed] = useState(false);
@@ -76,6 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [conversationsPressed, setConversationsPressed] = useState(false);
   const [analyticsPressed, setAnalyticsPressed] = useState(false);
   const [searchPressed, setSearchPressed] = useState(false);
+  const [dynamicOptionsPressed, setDynamicOptionsPressed] = useState(false);
 
   // Animations
   const visibilityAnim = useRef(new Animated.Value(isVisible ? 1 : 0)).current;
@@ -84,8 +91,13 @@ export const Header: React.FC<HeaderProps> = ({
   const conversationsButtonScale = useRef(new Animated.Value(1)).current;
   const analyticsButtonScale = useRef(new Animated.Value(1)).current;
   const searchButtonScale = useRef(new Animated.Value(1)).current;
+  const dynamicOptionsButtonScale = useRef(new Animated.Value(1)).current;
   const searchFadeAnim = useRef(new Animated.Value(0)).current;
   const titleFadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Timeout refs for cleanup
+  const buttonTimeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const menuTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     Animated.timing(visibilityAnim, {
@@ -107,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
         }),
         Animated.timing(searchFadeAnim, {
           toValue: 1,
-          duration: 700,
+          duration: 1500,
           useNativeDriver: true,
         }),
       ]).start();
@@ -128,9 +140,26 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [showSearch]);
 
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all button timeouts
+      buttonTimeoutRefs.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      buttonTimeoutRefs.current.clear();
+      
+      // Clear menu timeout
+      if (menuTimeoutRef.current) {
+        clearTimeout(menuTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const createButtonPressHandler = (
     scaleAnim: Animated.Value,
     setPressed: (pressed: boolean) => void,
+    buttonId: string,
     onPress?: () => void
   ) => () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -149,13 +178,24 @@ export const Header: React.FC<HeaderProps> = ({
     ]).start();
 
     setPressed(true);
-    setTimeout(() => {
+    
+    // Clear any existing timeout for this button
+    const existingTimeout = buttonTimeoutRefs.current.get(buttonId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    // Set new timeout with cleanup tracking
+    const timeoutId = setTimeout(() => {
       setPressed(false);
       onPress?.();
+      buttonTimeoutRefs.current.delete(buttonId);
     }, 150);
+    
+    buttonTimeoutRefs.current.set(buttonId, timeoutId);
   };
 
-  const handleBackPress = createButtonPressHandler(backButtonScale, setBackPressed, onBackPress);
+  const handleBackPress = createButtonPressHandler(backButtonScale, setBackPressed, 'back', onBackPress);
   
   // Subtle anticipatory hamburger press handler
   const handleMenuPress = () => {
@@ -177,15 +217,23 @@ export const Header: React.FC<HeaderProps> = ({
     ]).start();
 
     setMenuPressed(true);
-    setTimeout(() => {
+    
+    // Clear any existing menu timeout
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current);
+    }
+    
+    // Set new timeout with cleanup tracking
+    menuTimeoutRef.current = setTimeout(() => {
       setMenuPressed(false);
       onMenuPress?.();
     }, 80);
   };
   
-  const handleConversationsPress = createButtonPressHandler(conversationsButtonScale, setConversationsPressed, onConversationsPress);
-  const handleAnalyticsPress = createButtonPressHandler(analyticsButtonScale, setAnalyticsPressed, onQuickAnalyticsPress);
-  const handleSearchPress = createButtonPressHandler(searchButtonScale, setSearchPressed, onSearchPress);
+  const handleConversationsPress = createButtonPressHandler(conversationsButtonScale, setConversationsPressed, 'conversations', onConversationsPress);
+  const handleAnalyticsPress = createButtonPressHandler(analyticsButtonScale, setAnalyticsPressed, 'analytics', onQuickAnalyticsPress);
+  const handleSearchPress = createButtonPressHandler(searchButtonScale, setSearchPressed, 'search', onSearchPress);
+  const handleDynamicOptionsPress = createButtonPressHandler(dynamicOptionsButtonScale, setDynamicOptionsPressed, 'dynamicOptions', onDynamicOptionsPress);
 
   const renderButton = (
     iconName: string,
@@ -200,12 +248,7 @@ export const Header: React.FC<HeaderProps> = ({
     return (
       <Animated.View style={{ transform: [{ scale }] }}>
         <TouchableOpacity
-          style={[
-            styles.iconButton,
-            {
-              backgroundColor: isPressed ? 'rgba(255,255,255,0.1)' : 'transparent',
-            }
-          ]}
+          style={styles.iconButton}
           onPress={onPress}
           activeOpacity={0.8}
         >
@@ -221,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   // Count total buttons (INCLUDING menu button since it affects layout)
-  const nonMenuButtonCount = [showBackButton, showConversationsButton, showQuickAnalyticsButton, showSearchButton].filter(Boolean).length;
+  const nonMenuButtonCount = [showBackButton, showConversationsButton, showQuickAnalyticsButton, showSearchButton, showDynamicOptionsButton].filter(Boolean).length;
   const totalButtons = showMenuButton ? nonMenuButtonCount + 1 : nonMenuButtonCount;
   const shouldSplit = totalButtons >= 2;
 
@@ -243,6 +286,14 @@ export const Header: React.FC<HeaderProps> = ({
         conversationsButtonScale,
         handleConversationsPress,
         conversationsPressed
+      )}
+      {shouldSplit && showDynamicOptionsButton && renderButton(
+        'layers',
+        'Feather',
+        theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.secondary,
+        dynamicOptionsButtonScale,
+        handleDynamicOptionsPress,
+        dynamicOptionsPressed
       )}
       {shouldSplit && showSearchButton && renderButton(
         'search',
@@ -269,6 +320,15 @@ export const Header: React.FC<HeaderProps> = ({
         conversationsPressed
       )}
 
+      {!shouldSplit && showDynamicOptionsButton && renderButton(
+        'layers',
+        'Feather',
+        theme === 'dark' ? designTokens.text.primaryDark : designTokens.text.secondary,
+        dynamicOptionsButtonScale,
+        handleDynamicOptionsPress,
+        dynamicOptionsPressed
+      )}
+
       {!shouldSplit && showSearchButton && renderButton(
         'search',
         'Feather',
@@ -287,15 +347,16 @@ export const Header: React.FC<HeaderProps> = ({
         analyticsPressed
       )}
 
+      {rightIcon && (
+        <View style={styles.rightIconContainer}>
+          {rightIcon}
+        </View>
+      )}
+
       {showMenuButton && (
         <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
           <TouchableOpacity
-            style={[
-              styles.iconButton,
-              {
-                backgroundColor: menuPressed ? 'rgba(255,255,255,0.1)' : 'transparent',
-              }
-            ]}
+            style={styles.iconButton}
             onPress={handleMenuPress}
             activeOpacity={0.8}
           >
@@ -341,22 +402,10 @@ export const Header: React.FC<HeaderProps> = ({
               backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
               borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
               opacity: searchFadeAnim,
-              transform: [{
-                scale: searchFadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                })
-              }],
               position: showSearch ? 'relative' : 'absolute',
               zIndex: showSearch ? 1 : 0,
             }
           ]}>
-            <Feather 
-              name="search" 
-              size={16} 
-              color={themeColors.textMuted} 
-              style={styles.searchIcon}
-            />
             <TextInput
               style={[styles.searchInput, { color: themeColors.text }]}
               value={searchQuery}
@@ -448,7 +497,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: spacing[2],
+    gap: spacing[1],
     overflow: 'visible',
   },
   titleContainer: {
@@ -474,12 +523,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: spacing[2],
+    gap: spacing[1],
   },
   iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rightIconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -493,9 +545,6 @@ const styles = StyleSheet.create({
     height: 36,
     minWidth: 260,
     maxWidth: 300,
-  },
-  searchIcon: {
-    marginRight: spacing[2],
   },
   searchInput: {
     flex: 1,

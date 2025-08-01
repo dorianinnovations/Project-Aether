@@ -23,6 +23,7 @@ import SignInScreen from './src/screens/auth/SignInScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
 import ChatScreen from './src/screens/chat/ChatScreen';
 import EngineScreen from './src/screens/engine/EngineScreen';
+import EngineDetailScreen from './src/screens/engine/EngineDetailScreen';
 import SocialScreen from './src/screens/connections/ConnectionsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
@@ -60,6 +61,7 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   Chat: undefined;
   Engine: undefined;
+  EngineDetail: { engineId: string; engineTitle: string };
   Social: undefined;
   Profile: undefined;
 };
@@ -103,6 +105,13 @@ const MainStackNavigator = () => {
     >
       <MainStack.Screen name="Chat" component={ChatScreen} />
       <MainStack.Screen name="Engine" component={EngineScreen} />
+      <MainStack.Screen 
+        name="EngineDetail" 
+        component={EngineDetailScreen}
+        options={{
+          headerShown: true,
+        }}
+      />
       <MainStack.Screen name="Social" component={SocialScreen} />
       <MainStack.Screen name="Profile" component={ProfileScreen} />
     </MainStack.Navigator>
@@ -170,8 +179,8 @@ export default function App() {
 
     initializeApp();
 
-    // Listen for auth state changes by checking periodically
-    const authCheckInterval = setInterval(checkAuthStatus, 1000);
+    // Listen for auth state changes by checking periodically (optimized frequency)
+    const authCheckInterval = setInterval(checkAuthStatus, 5000);
     
     return () => clearInterval(authCheckInterval);
   }, []);

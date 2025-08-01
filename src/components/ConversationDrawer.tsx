@@ -97,6 +97,14 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const [currentPage, setCurrentPage] = useState(0);
   const pagerRef = useRef<PagerView>(null);
   
+  // Timeout refs for cleanup
+  const conversationSelectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const clearSuccessTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const clearCloseTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const deleteSuccessTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const deleteCloseTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const deleteRetryTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  
 
   const themeColors = getThemeColors(theme);
   
@@ -141,6 +149,31 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       hideDrawer();
     }
   }, [isVisible]);
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all timeout refs
+      if (conversationSelectTimeoutRef.current) {
+        clearTimeout(conversationSelectTimeoutRef.current);
+      }
+      if (clearSuccessTimeoutRef.current) {
+        clearTimeout(clearSuccessTimeoutRef.current);
+      }
+      if (clearCloseTimeoutRef.current) {
+        clearTimeout(clearCloseTimeoutRef.current);
+      }
+      if (deleteSuccessTimeoutRef.current) {
+        clearTimeout(deleteSuccessTimeoutRef.current);
+      }
+      if (deleteCloseTimeoutRef.current) {
+        clearTimeout(deleteCloseTimeoutRef.current);
+      }
+      if (deleteRetryTimeoutRef.current) {
+        clearTimeout(deleteRetryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadConversations = async () => {
     setIsLoading(true);
@@ -280,8 +313,13 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     // Perfect tactile feedback for selection
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     
+    // Clear any existing timeout
+    if (conversationSelectTimeoutRef.current) {
+      clearTimeout(conversationSelectTimeoutRef.current);
+    }
+    
     // Micro-delay for satisfaction (like clicking a physical button)
-    setTimeout(() => {
+    conversationSelectTimeoutRef.current = setTimeout(() => {
       onConversationSelect(conversation);
       hideDrawer();
     }, 50);
@@ -340,13 +378,21 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       setConversations([]);
       setClearStatus('success');
       
+      // Clear any existing timeouts
+      if (clearSuccessTimeoutRef.current) {
+        clearTimeout(clearSuccessTimeoutRef.current);
+      }
+      if (clearCloseTimeoutRef.current) {
+        clearTimeout(clearCloseTimeoutRef.current);
+      }
+      
       // Show success animation
-      setTimeout(() => {
+      clearSuccessTimeoutRef.current = setTimeout(() => {
         checkOpacity.value = withTiming(1, { duration: 300 });
       }, 400);
 
       // Close modal after success
-      setTimeout(() => {
+      clearCloseTimeoutRef.current = setTimeout(() => {
         if (currentConversationId) {
           onClose();
         }
@@ -405,13 +451,21 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       setConversations(prev => prev.filter(c => c._id !== conversationToDelete));
       setDeleteStatus('success');
       
+      // Clear any existing timeouts
+      if (deleteSuccessTimeoutRef.current) {
+        clearTimeout(deleteSuccessTimeoutRef.current);
+      }
+      if (deleteCloseTimeoutRef.current) {
+        clearTimeout(deleteCloseTimeoutRef.current);
+      }
+      
       // Show success animation
-      setTimeout(() => {
+      deleteSuccessTimeoutRef.current = setTimeout(() => {
         deleteCheckOpacity.value = withTiming(1, { duration: 300 });
       }, 400);
 
       // Close modal after success
-      setTimeout(() => {
+      deleteCloseTimeoutRef.current = setTimeout(() => {
         if (conversationToDelete === currentConversationId) {
           onClose();
         }
@@ -438,7 +492,11 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         { text: 'OK', style: 'default' },
         { text: 'Retry', style: 'default', onPress: () => {
           setDeleteStatus('idle');
-          setTimeout(() => confirmDeleteConversation(), 500);
+          // Clear any existing retry timeout
+          if (deleteRetryTimeoutRef.current) {
+            clearTimeout(deleteRetryTimeoutRef.current);
+          }
+          deleteRetryTimeoutRef.current = setTimeout(() => confirmDeleteConversation(), 500);
         }}
       ]);
       setIsDeleting(false);
@@ -658,11 +716,21 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const renderConversationItem = ({ item, index }: { item: Conversation, index: number }) => {
     const isActive = item._id === currentConversationId;
     
+    // Get a consistent pastel color for each conversation based on index
+    const pastelColors = Object.values(designTokens.pastels);
+    const dotColor = pastelColors[index % pastelColors.length];
+    
     return (
       <TouchableOpacity
         onPress={() => handleConversationPress(item)}
-        style={[styles.conversationCard, { marginBottom: 12 }]}
-        activeOpacity={0.92} // More subtle press feedback
+        style={[
+          styles.conversationCard, 
+          { 
+            marginBottom: 12,
+            marginTop: index === 0 ? 16 : 0, // Add top margin to first item
+          }
+        ]}
+        activeOpacity={0.8} // Match HeaderMenu press feedback
       >
         <View
           style={[
@@ -673,11 +741,25 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                   ? 'rgba(110, 231, 183, 0.15)'
                   : 'rgba(110, 231, 183, 0.25)'
                 : theme === 'dark'
-                  ? 'rgba(45, 45, 45, 0.6)'
-                  : 'rgba(248, 250, 252, 0.4)',
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(0, 0, 0, 0.03)',
+              borderColor: isActive
+                ? theme === 'dark'
+                  ? 'rgba(110, 231, 183, 0.3)'
+                  : 'rgba(110, 231, 183, 0.4)'
+                : theme === 'dark'
+                  ? 'rgba(255,255,255,0.1)'
+                  : 'rgba(0, 0, 0, 0.08)',
             }
           ]}
         >
+          {/* Pastel dot for visual effect */}
+          <View 
+            style={[
+              styles.pastelDot,
+              { backgroundColor: dotColor }
+            ]} 
+          />
           <View style={styles.conversationContent}>
             <View style={styles.conversationHeader}>
               <Text style={[
@@ -1581,22 +1663,36 @@ const styles = StyleSheet.create({
   // Missing styles
   conversationCard: {
     borderRadius: 12,
+    marginHorizontal: spacing[1],
+    marginVertical: 2,
     overflow: 'hidden',
   },
   conversationBlur: {
     flex: 1,
     borderRadius: 12,
-    padding: spacing[3],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[1], // Further reduced from spacing[2] to spacing[1]
+    borderWidth: 1,
+    position: 'relative',
+  },
+  pastelDot: {
+    position: 'absolute',
+    top: 8, // Adjusted for shorter card height
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 0.7,
   },
   conversationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing[2],
+    marginBottom: spacing[1], // Reduced from spacing[2] to spacing[1]
   },
   conversationPreview: {
     ...typography.textStyles.bodySmall,
-    marginBottom: spacing[2],
+    marginBottom: spacing[1], // Reduced from spacing[2] to spacing[1]
     lineHeight: 18,
   },
   metaRight: {

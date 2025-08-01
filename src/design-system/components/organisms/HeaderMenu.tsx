@@ -22,6 +22,7 @@ import { typography } from '../../tokens/typography';
 import { spacing } from '../../tokens/spacing';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { ThemeSelector } from '../molecules/ThemeSelector';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -62,12 +63,6 @@ const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
     icon: <Feather name="settings" size={16} color={getIconColor('settings', theme)} />, 
     label: 'Settings', 
     key: 'settings', 
-    requiresAuth: false 
-  },
-  { 
-    icon: <Feather name={theme === 'light' ? "moon" : "sun"} size={16} color={getIconColor('menu', theme)} />, 
-    label: theme === 'light' ? 'Dark Mode' : 'Light Mode', 
-    key: 'theme_toggle', 
     requiresAuth: false 
   },
   { 
@@ -118,8 +113,8 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(-8)).current;
   
-  // Item stagger animations
-  const itemAnims = useRef(menuActions.map(() => ({
+  // Item stagger animations (including theme selector)
+  const itemAnims = useRef([...menuActions, { key: 'theme_selector' }].map(() => ({
     opacity: new Animated.Value(0),
     translateY: new Animated.Value(10),
     scale: new Animated.Value(0.9),
@@ -181,7 +176,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       }),
     ]).start(() => {
       // Gentle ladder falling haptic sequence
-      menuActions.forEach((_, index) => {
+      [...menuActions, { key: 'theme_selector' }].forEach((_, index) => {
         setTimeout(() => {
           if (index < 3) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -329,12 +324,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     ]).start(() => {
       setPressedIndex(null);
       
-      // Handle theme toggle separately
-      if (actionKey === 'theme_toggle') {
-        toggleTheme();
-      } else {
-        onAction(actionKey);
-      }
+      onAction(actionKey);
     });
   }, [isAnimating, pressedIndex, buttonAnims, onAction, toggleTheme]);
 
@@ -443,6 +433,26 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
               </TouchableOpacity>
             </Animated.View>
           ))}
+          
+          {/* Theme Selector as Menu Button */}
+          <Animated.View
+            style={[
+              styles.menuButton,
+              {
+                backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
+                borderColor: theme === 'dark' 
+                  ? 'rgba(255,255,255,0.1)' 
+                  : 'rgba(0, 0, 0, 0.08)',
+                opacity: itemAnims[menuActions.length] ? itemAnims[menuActions.length].opacity : 1,
+                transform: itemAnims[menuActions.length] ? [
+                  { translateY: itemAnims[menuActions.length].translateY },
+                  { scale: itemAnims[menuActions.length].scale },
+                ] : [],
+              }
+            ]}
+          >
+            <ThemeSelector />
+          </Animated.View>
         </View>
         </Animated.View>
       </View>

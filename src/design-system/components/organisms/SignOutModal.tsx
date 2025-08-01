@@ -120,41 +120,14 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Icon bounce animation
+      // Icon bounce animation - faster and springier
       if (showIcon) {
-        Animated.sequence([
-          Animated.spring(iconScale, {
-            toValue: 1.2,
-            tension: 150,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-          Animated.spring(iconScale, {
-            toValue: 1,
-            tension: 150,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        
-        // Subtle wiggle for attention
-        Animated.sequence([
-          Animated.timing(iconScale, {
-            toValue: 1.05,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.timing(iconScale, {
-            toValue: 0.95,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.timing(iconScale, {
-            toValue: 1,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-        ]).start();
+        Animated.spring(iconScale, {
+          toValue: 1,
+          tension: 200,
+          friction: 6,
+          useNativeDriver: true,
+        }).start();
       }
       
       setIsAnimating(false);
@@ -490,7 +463,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing[4],

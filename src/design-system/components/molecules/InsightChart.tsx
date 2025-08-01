@@ -47,6 +47,21 @@ const InsightChart: React.FC<InsightChartProps> = ({
 
   const maxValue = Math.max(...data.map(d => d.value));
   
+  // Format numbers for display - keeps them human readable
+  const formatAxisValue = (value: number): string => {
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    } else if (value >= 100) {
+      return Math.round(value).toString();
+    } else if (value >= 10) {
+      return value.toFixed(1);
+    } else {
+      return value.toFixed(2);
+    }
+  };
+  
   const renderBarChart = () => {
     return (
       <View style={styles.chartContainer}>
@@ -72,7 +87,7 @@ const InsightChart: React.FC<InsightChartProps> = ({
                   {item.label}
                 </Text>
                 <Text style={[styles.barValue, { color: themeColors.text }]}>
-                  {item.value}
+                  {formatAxisValue(item.value)}
                 </Text>
               </View>
             );
@@ -118,66 +133,85 @@ const InsightChart: React.FC<InsightChartProps> = ({
   };
 
   const renderLineChart = () => {
+    // Calculate proper chart dimensions
+    const chartPadding = 20;
+    const chartHeight = height - 80; // Reserve space for labels
+    const chartRealWidth = chartWidth - (chartPadding * 2);
+    
+    // Calculate points with proper scaling
     const points = data.map((item, index) => {
-      const x = (index / (data.length - 1)) * (chartWidth - 40);
-      const y = height - 40 - ((item.value / maxValue) * (height - 80));
-      return { x: x + 20, y, value: item.value, label: item.label };
+      const x = (index / Math.max(data.length - 1, 1)) * chartRealWidth + chartPadding;
+      const normalizedValue = maxValue > 0 ? item.value / maxValue : 0;
+      const y = chartHeight - (normalizedValue * chartHeight) + 40;
+      return { 
+        x: Math.max(chartPadding, Math.min(x, chartWidth - chartPadding)), 
+        y: Math.max(40, Math.min(y, height - 40)), 
+        value: item.value, 
+        label: item.label 
+      };
     });
 
     return (
       <View style={styles.lineContainer}>
         <View style={[styles.lineChart, { height }]}>
-          {/* Grid lines */}
-          {[0, 25, 50, 75, 100].map((percentage) => (
+          {/* Grid lines - simplified */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => (
             <View
-              key={percentage}
+              key={index}
               style={[
                 styles.gridLine,
                 {
-                  bottom: (percentage / 100) * (height - 80) + 40,
+                  bottom: 40 + (ratio * chartHeight),
                   backgroundColor: themeColors.surfaces.shadow + '20',
                 }
               ]}
             />
           ))}
           
-          {/* Data points */}
-          {points.map((point, index) => (
-            <View key={index}>
+          {/* Simplified line path using SVG-like approach */}
+          {points.map((point, index) => {
+            if (index === points.length - 1) return null;
+            
+            const nextPoint = points[index + 1];
+            const deltaX = nextPoint.x - point.x;
+            const deltaY = nextPoint.y - point.y;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+            
+            return (
               <View
+                key={`line-${index}`}
                 style={[
-                  styles.dataPoint,
+                  styles.connectLine,
                   {
-                    left: point.x - 4,
-                    bottom: point.y - 4,
+                    position: 'absolute',
+                    left: point.x,
+                    bottom: height - point.y,
+                    width: distance,
+                    height: 2,
                     backgroundColor: designTokens.brand.primary,
+                    transformOrigin: '0 50%',
+                    transform: [{ rotate: `${angle}deg` }],
                   }
                 ]}
               />
-              {/* Connect lines */}
-              {index < points.length - 1 && (
-                <View
-                  style={[
-                    styles.connectLine,
-                    {
-                      left: point.x,
-                      bottom: point.y,
-                      width: Math.sqrt(
-                        Math.pow(points[index + 1].x - point.x, 2) +
-                        Math.pow(points[index + 1].y - point.y, 2)
-                      ),
-                      transform: [{
-                        rotate: `${Math.atan2(
-                          points[index + 1].y - point.y,
-                          points[index + 1].x - point.x
-                        )}rad`
-                      }],
-                      backgroundColor: designTokens.brand.primary,
-                    }
-                  ]}
-                />
-              )}
-            </View>
+            );
+          })}
+          
+          {/* Data points */}
+          {points.map((point, index) => (
+            <View
+              key={`point-${index}`}
+              style={[
+                styles.dataPoint,
+                {
+                  position: 'absolute',
+                  left: point.x - 4,
+                  bottom: height - point.y - 4,
+                  backgroundColor: designTokens.brand.primary,
+                }
+              ]}
+            />
           ))}
           
           {/* X-axis labels */}
@@ -185,6 +219,24 @@ const InsightChart: React.FC<InsightChartProps> = ({
             {data.map((item, index) => (
               <Text key={index} style={[styles.axisLabel, { color: themeColors.textMuted }]}>
                 {item.label}
+              </Text>
+            ))}
+          </View>
+          
+          {/* Y-axis value labels */}
+          <View style={styles.yAxisLabels}>
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => (
+              <Text 
+                key={index}
+                style={[
+                  styles.yAxisLabel, 
+                  { 
+                    color: themeColors.textMuted,
+                    bottom: 35 + (ratio * chartHeight),
+                  }
+                ]}
+              >
+                {formatAxisValue(ratio * maxValue)}
               </Text>
             ))}
           </View>
@@ -332,7 +384,7 @@ const styles = StyleSheet.create({
   connectLine: {
     position: 'absolute',
     height: 2,
-    transformOrigin: 'left center',
+    transformOrigin: '0 50%',
   },
   xAxisLabels: {
     position: 'absolute',
@@ -345,6 +397,18 @@ const styles = StyleSheet.create({
   axisLabel: {
     ...typography.textStyles.caption,
     textAlign: 'center',
+    fontSize: 10,
+  },
+  yAxisLabels: {
+    position: 'absolute',
+    left: 0,
+    width: 18,
+  },
+  yAxisLabel: {
+    ...typography.textStyles.caption,
+    fontSize: 9,
+    textAlign: 'right',
+    position: 'absolute',
   },
 });
 

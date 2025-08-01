@@ -61,6 +61,8 @@ interface ChatInputProps {
   isTabBarHidden?: boolean;
   colorfulBubblesEnabled?: boolean;
   onFocus?: () => void;
+  onBlur?: () => void;
+  onDynamicOptionsPress?: () => void;
 }
 
 export const EnhancedChatInput: React.FC<ChatInputProps> = ({
@@ -81,6 +83,8 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
   onAttachmentsChange,
   colorfulBubblesEnabled = false,
   onFocus,
+  onBlur,
+  onDynamicOptionsPress,
 }) => {
   const themeColors = getThemeColors(theme);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -316,7 +320,10 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
       duration: 150,
       useNativeDriver: false,
     }).start();
-  }, [inputFocusAnim]);
+    
+    // Call parent's onBlur if provided
+    onBlur?.();
+  }, [inputFocusAnim, onBlur]);
 
 
 
@@ -420,6 +427,8 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
               onBlur={handleInputBlur}
               editable={!isLoading}
               textAlignVertical="top"
+              cursorColor={theme === 'dark' ? '#FFFFFF' : '#666666'}
+              selectionColor={theme === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(102, 102, 102, 0.3)'}
             />
           </Animated.View>
 
@@ -434,6 +443,24 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
               >
                 <FontAwesome5 
                   name={attachmentButtonsVisible ? "times" : "paperclip"} 
+                  size={16} 
+                  color={themeColors.textSecondary} 
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* Dynamic Options Button */}
+            {onDynamicOptionsPress && (
+              <TouchableOpacity
+                style={styles.dynamicOptionsButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onDynamicOptionsPress();
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name="layers" 
                   size={16} 
                   color={themeColors.textSecondary} 
                 />
@@ -706,6 +733,13 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  dynamicOptionsButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: -10,
   },
   voiceButton: {
     marginLeft: -15,

@@ -587,7 +587,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({
                           style={{ 
                             opacity: buttonGlowAnim,
                             shadowColor: getMinimalGlowColor(),
-                            shadowOffset: { width: 0, height: 0 },
+                            shadowOffset: { width: 2, height: 2 },
                             shadowOpacity: 1,
                             shadowRadius: 6,
                             borderRadius: 12,
@@ -607,7 +607,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({
                               borderColor: theme === 'dark' ? '#262626' : 'transparent',
                               borderWidth: theme === 'dark' ? 1 : 0,
                               shadowColor: '#ffffff',
-                              shadowOffset: { width: 0, height: 0 },
+                              shadowOffset: { width: 2, height: 2 },
                               shadowOpacity: theme === 'dark' ? 0.15 : 0.1,
                               shadowRadius: 4,
                               elevation: theme === 'dark' ? 3 : 2,

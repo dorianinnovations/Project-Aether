@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useNavigation } from '@react-navigation/native';
 
 import { Header, HeaderMenu, SignOutModal } from '../../design-system/components/organisms';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
@@ -54,6 +55,7 @@ interface Comment {
 interface SocialScreenProps {}
 
 const SocialScreen: React.FC<SocialScreenProps> = () => {
+  const navigation = useNavigation();
   const { theme } = useTheme();
   const themeColors = getThemeColors(theme);
   
@@ -85,31 +87,45 @@ const SocialScreen: React.FC<SocialScreenProps> = () => {
 
   // Loading effect - show skeleton for 2s with shimmer animation
   useEffect(() => {
-    // Start shimmer animation with perfect loop
-    const shimmerLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0,
-          duration: 0, // Instant reset for seamless loop
-          useNativeDriver: false,
-        }),
-      ])
-    );
-    shimmerLoop.start();
+    // Start shimmer animation with perfect loop after delay
+    const startShimmerAnimation = () => {
+      const shimmerLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 0, // Instant reset for seamless loop
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      shimmerLoop.start();
+      return shimmerLoop;
+    };
 
-    const timer = setTimeout(() => {
-      shimmerLoop.stop();
-      setIsLoading(false);
-    }, 2000);
+    // Delay the start of shimmer animation
+    const shimmerDelay = 500; // 500ms delay before starting shimmer
+    const shimmerTimeoutId = setTimeout(() => {
+      const shimmerLoop = startShimmerAnimation();
+      
+      // Stop shimmer and hide loading after total time
+      const timer = setTimeout(() => {
+        shimmerLoop.stop();
+        setIsLoading(false);
+      }, 2000 - shimmerDelay); // Adjust remaining time
+
+      return () => {
+        clearTimeout(timer);
+        shimmerLoop.stop();
+      };
+    }, shimmerDelay);
 
     return () => {
-      clearTimeout(timer);
-      shimmerLoop.stop();
+      clearTimeout(shimmerTimeoutId);
     };
   }, [shimmerAnim]);
 
@@ -758,10 +774,11 @@ const SocialScreen: React.FC<SocialScreenProps> = () => {
   );
 
   // Shimmer component with intensity control
-  const ShimmerView = ({ style, children, intensity = 'normal' }: { 
+  const ShimmerView = ({ style, children, intensity = 'normal', delay = 0 }: { 
     style: any, 
     children?: React.ReactNode,
-    intensity?: 'subtle' | 'normal' | 'strong'
+    intensity?: 'subtle' | 'normal' | 'strong',
+    delay?: number
   }) => {
     const shimmerTranslate = shimmerAnim.interpolate({
       inputRange: [0, 1],
@@ -809,10 +826,11 @@ const SocialScreen: React.FC<SocialScreenProps> = () => {
   const renderSkeletonTabPills = () => (
     <View style={styles.tabContainer}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
-        {[1, 2, 3, 4].map((item) => (
+        {[1, 2, 3, 4].map((item, index) => (
           <ShimmerView
             key={item}
             intensity="subtle"
+            delay={index * 100} // Staggered delay: 0ms, 100ms, 200ms, 300ms
             style={[styles.skeletonTabPill, {
               backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
             }]}
@@ -830,37 +848,37 @@ const SocialScreen: React.FC<SocialScreenProps> = () => {
       {/* Skeleton Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.communityInfo}>
-          <ShimmerView intensity="subtle" style={[styles.skeletonDot, {
+          <ShimmerView intensity="subtle" delay={index * 50} style={[styles.skeletonDot, {
             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
           }]} />
-          <ShimmerView intensity="subtle" style={[styles.skeletonText, styles.skeletonCommunity, {
+          <ShimmerView intensity="subtle" delay={index * 50 + 100} style={[styles.skeletonText, styles.skeletonCommunity, {
             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
           }]} />
-          <ShimmerView intensity="subtle" style={[styles.skeletonText, styles.skeletonAuthor, {
+          <ShimmerView intensity="subtle" delay={index * 50 + 200} style={[styles.skeletonText, styles.skeletonAuthor, {
             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
           }]} />
-          <ShimmerView intensity="subtle" style={[styles.skeletonText, styles.skeletonTime, {
+          <ShimmerView intensity="subtle" delay={index * 50 + 300} style={[styles.skeletonText, styles.skeletonTime, {
             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
           }]} />
         </View>
-        <ShimmerView intensity="normal" style={[styles.skeletonBadge, {
+        <ShimmerView intensity="normal" delay={index * 50 + 400} style={[styles.skeletonBadge, {
           backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
         }]} />
       </View>
 
       {/* Skeleton Title */}
       <View style={styles.skeletonTitleContainer}>
-        <ShimmerView style={[styles.skeletonText, styles.skeletonTitleLine1, {
+        <ShimmerView delay={index * 50 + 500} style={[styles.skeletonText, styles.skeletonTitleLine1, {
           backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
         }]} />
-        <ShimmerView style={[styles.skeletonText, styles.skeletonTitleLine2, {
+        <ShimmerView delay={index * 50 + 600} style={[styles.skeletonText, styles.skeletonTitleLine2, {
           backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
         }]} />
       </View>
 
       {/* Skeleton Image (every 3rd post) */}
       {index % 3 === 1 && (
-        <ShimmerView style={[styles.skeletonImage, {
+        <ShimmerView delay={index * 50 + 700} style={[styles.skeletonImage, {
           backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
         }]} />
       )}
@@ -868,14 +886,14 @@ const SocialScreen: React.FC<SocialScreenProps> = () => {
       {/* Skeleton Footer */}
       <View style={styles.postFooter}>
         <View style={styles.engagement}>
-          <ShimmerView intensity="subtle" style={[styles.skeletonIcon, {
+          <ShimmerView intensity="subtle" delay={index * 50 + 800} style={[styles.skeletonIcon, {
             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
           }]} />
-          <ShimmerView intensity="subtle" style={[styles.skeletonText, styles.skeletonEngagement, {
+          <ShimmerView intensity="subtle" delay={index * 50 + 900} style={[styles.skeletonText, styles.skeletonEngagement, {
             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
           }]} />
         </View>
-        <ShimmerView intensity="subtle" style={[styles.skeletonIcon, {
+        <ShimmerView intensity="subtle" delay={index * 50 + 1000} style={[styles.skeletonIcon, {
           backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
         }]} />
       </View>

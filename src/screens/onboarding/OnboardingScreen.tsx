@@ -17,12 +17,20 @@ import {
 import { PanGestureHandler, State, PanGestureHandlerGestureEvent, PanGestureHandlerStateChangeEvent } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
-import { ShimmerText } from '../../design-system/components/atoms';
+import { RainbowShimmerText } from '../../design-system/components/atoms';
 import { designTokens, getThemeColors } from '../../design-system/tokens/colors';
 import { useTheme } from '../../contexts/ThemeContext';
 import { typography } from '../../design-system/tokens/typography';
 
 const { width, height } = Dimensions.get('window');
+
+const getStepColor = (stepIndex: number, theme: 'light' | 'dark'): string => {
+  const lightColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'];
+  const darkColors = ['#FF8A80', '#64FFDA', '#40C4FF', '#A7FFEB'];
+  
+  const colors = theme === 'dark' ? darkColors : lightColors;
+  return colors[stepIndex] || colors[0];
+};
 
 interface OnboardingScreenProps {
   navigation: any;
@@ -296,10 +304,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
                         styles.progressNode,
                         {
                           backgroundColor: index === currentStep 
-                            ? (theme === 'dark' ? '#ffffff' : '#000000')
+                            ? getStepColor(index, theme)
                             : 'transparent',
                           borderColor: index <= currentStep
-                            ? (theme === 'dark' ? '#ffffff' : '#000000')
+                            ? getStepColor(index, theme)
                             : (theme === 'dark' ? '#333333' : '#e5e7eb'),
                           borderWidth: 1,
                         },
@@ -311,7 +319,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
                           styles.progressConnector,
                           {
                             backgroundColor: index < currentStep
-                              ? (theme === 'dark' ? '#ffffff' : '#000000')
+                              ? getStepColor(index, theme)
                               : (theme === 'dark' ? '#333333' : '#e5e7eb'),
                           },
                         ]}
@@ -367,7 +375,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
 
                 {/* Main Title */}
                 <Animated.View style={[styles.titleSection, { opacity: titleOpacity }]}>
-                  <ShimmerText
+                  <RainbowShimmerText
                     style={[
                       styles.titleText,
                       { 
@@ -377,11 +385,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
                     intensity="normal"
                     duration={3000}
                     delay={1200}
-                    customShimmerColor={theme === 'dark' ? '#4FC3F7' : '#2196F3'}
                     waveWidth="normal"
                   >
                     {currentStepData.title}
-                  </ShimmerText>
+                  </RainbowShimmerText>
                 </Animated.View>
 
                 {/* Subtitle */}
@@ -444,7 +451,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
                     }
                   ]}
                 >
-                  {currentStep === onboardingSteps.length - 1 ? 'drift right to begin your journey' : 'drift right to continue'}
+                  {currentStep === onboardingSteps.length - 1 ? 'Swipe to continue' : 'Swipe to continue'}
                 </Text>
               </View>
             </Animated.View>
@@ -472,6 +479,7 @@ const styles = StyleSheet.create({
   progressContainer: {
     alignItems: 'center',
     gap: 16,
+    marginTop: 60,
   },
   progressTrack: {
     flexDirection: 'row',
@@ -485,7 +493,7 @@ const styles = StyleSheet.create({
   progressNode: {
     width: 8,
     height: 8,
-    borderRadius: 2,
+    borderRadius: 4,
   },
   progressConnector: {
     width: 24,

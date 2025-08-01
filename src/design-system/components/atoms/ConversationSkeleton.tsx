@@ -16,17 +16,28 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { designTokens } from '../../tokens/colors';
 import { spacing } from '../../tokens/spacing';
 
-const ConversationSkeleton: React.FC = () => {
+interface ConversationSkeletonProps {
+  delay?: number; // Delay in milliseconds before starting animation
+}
+
+const ConversationSkeleton: React.FC<ConversationSkeletonProps> = ({ delay = 0 }) => {
   const { theme } = useTheme();
   const shimmerValue = useSharedValue(0);
 
   React.useEffect(() => {
-    shimmerValue.value = withRepeat(
-      withTiming(1, { duration: 1200 }),
-      -1,
-      true
-    );
-  }, []);
+    // Delay the start of the animation
+    const timeoutId = setTimeout(() => {
+      shimmerValue.value = withRepeat(
+        withTiming(1, { duration: 1200 }),
+        -1,
+        true
+      );
+    }, delay);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [delay]);
 
   const shimmerStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
@@ -51,10 +62,19 @@ const ConversationSkeleton: React.FC = () => {
       styles.container,
       {
         backgroundColor: theme === 'dark'
-          ? 'rgba(45, 45, 45, 0.4)'
-          : 'rgba(248, 250, 252, 0.3)',
+          ? 'rgba(255,255,255,0.05)'
+          : 'rgba(0, 0, 0, 0.03)',
+        borderColor: theme === 'dark'
+          ? 'rgba(255,255,255,0.1)'
+          : 'rgba(0, 0, 0, 0.08)',
       }
     ]}>
+      {/* Pastel dot skeleton */}
+      <Animated.View style={[
+        styles.pastelDotSkeleton,
+        { backgroundColor: getSkeletonColor() },
+        shimmerStyle,
+      ]} />
       <View style={styles.content}>
         {/* Title and Time Row */}
         <View style={styles.header}>
@@ -103,11 +123,24 @@ const ConversationSkeleton: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
-    padding: spacing[3],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[1], // Further reduced from spacing[2] to spacing[1]
+    marginHorizontal: spacing[1],
+    marginVertical: 2,
     marginBottom: 12,
+    borderWidth: 1,
+    position: 'relative',
+  },
+  pastelDotSkeleton: {
+    position: 'absolute',
+    top: 8, // Adjusted for smaller card height
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   content: {
-    gap: spacing[2],
+    gap: spacing[1], // Reduced gap between elements
   },
   header: {
     flexDirection: 'row',

@@ -19,7 +19,6 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 
@@ -60,7 +59,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const { theme, colors, toggleTheme } = useTheme();
   // Local state for settings
-  const [textSize, setTextSize] = useState(16);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
@@ -90,33 +88,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // Timeout refs for cleanup
   const animationTimeouts = useRef<NodeJS.Timeout[]>([]).current;
 
-  // Rainbow pastel icon colors (same as HeaderMenu)
+  // Rainbow pastel icon colors in proper descending order starting from red
   const getSettingsIconColor = (index: number): string => {
     const colors = [
-      '#FF6B9D', // Pink
-      '#C44569', // Dark Pink  
-      '#F8B500', // Orange
-      '#F39801', // Dark Orange
-      '#05C46B', // Green
-      '#00A8CC', // Teal
-      '#0066CC', // Blue
-      '#574B90', // Purple
-      '#8E44AD', // Dark Purple
-      '#6C5CE7', // Light Purple
-      '#FF5722', // Red Orange
-      '#9C27B0', // Purple
-      '#673AB7', // Deep Purple
-      '#3F51B5', // Indigo
-      '#2196F3', // Blue
-      '#00BCD4', // Cyan
-      '#009688', // Teal
-      '#4CAF50', // Green
-      '#8BC34A', // Light Green
-      '#CDDC39', // Lime
-      '#FFEB3B', // Yellow
-      '#FFC107', // Amber
-      '#FF9800', // Orange
-      '#FF5722', // Deep Orange
+      '#FF6B6B', // Red (pastel)
+      '#FF8E6B', // Red-Orange (pastel)
+      '#FFB366', // Orange (pastel)
+      '#FFD93D', // Yellow (pastel)
+      '#6BCF7F', // Green (pastel)
+      '#4ECDC4', // Teal (pastel)
+      '#45B7D1', // Sky Blue (pastel)
+      '#667EEA', // Blue (pastel)
+      '#764BA2', // Indigo (pastel)
+      '#A8E6CF', // Mint Green (pastel)
+      '#FFB3BA', // Pink (pastel)
+      '#FFDFBA', // Peach (pastel)
+      '#FFFFBA', // Light Yellow (pastel)
+      '#BAFFC9', // Light Green (pastel)
+      '#BAE1FF', // Light Blue (pastel)
+      '#C7CEEA', // Lavender (pastel)
+      '#F8B2E3', // Hot Pink (pastel)
+      '#FFC0CB', // Classic Pink (pastel)
+      '#E6E6FA', // Lavender Gray (pastel)
+      '#F0E68C', // Khaki (pastel)
+      '#DDA0DD', // Plum (pastel)
+      '#98FB98', // Pale Green (pastel)
+      '#F0F8FF', // Alice Blue (pastel)
+      '#FFEFD5', // Papaya Whip (pastel)
     ];
     return colors[index % colors.length];
   };
@@ -125,12 +123,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const subDrawerSections = {
     appearance: {
       title: 'Appearance',
-      icon: 'palette',
-      description: 'Theme, animations, text size',
+      icon: 'sliders',
+      description: 'Theme and animations',
       items: [
         { key: 'theme', label: 'Dark Mode', value: theme === 'dark', type: 'switch' },
         { key: 'animations', label: 'Animations', value: animationsEnabled, type: 'switch' },
-        { key: 'textSize', label: 'Text Size', value: textSize, type: 'slider', min: 12, max: 24 },
       ]
     },
     notifications: {
@@ -263,7 +260,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const loadSettings = async () => {
     try {
       const settings = await SettingsStorage.getAllSettings();
-      setTextSize(settings.textSize);
       setNotificationsEnabled(settings.notificationsEnabled);
       setAnimationsEnabled(settings.animationsEnabled);
       setAnalyticsEnabled(settings.analyticsEnabled);
@@ -338,18 +334,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setActiveSubDrawer(null);
     });
   };
-
-  const handleTextSizeChange = async (value: number) => {
-    setTextSize(value);
-    // Add micro haptics for slider movement
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
-    try {
-      await SettingsStorage.setSetting('textSize', value);
-    } catch (error) {
-      console.error('Failed to save text size:', error);
-    }
-  };
-
 
   const handleAdvancedSetting = async (setting: string, value: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -503,7 +487,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     );
   };
 
-  // Render main settings item
+  // Render main settings item (matching HeaderMenu style)
   const renderSettingsItem = (section: string, index: number) => {
     const sectionData = subDrawerSections[section as keyof typeof subDrawerSections];
     const itemColor = getSettingsIconColor(index);
@@ -513,25 +497,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         style={[
           styles.settingsItem, 
           { 
-            borderColor: `${itemColor}30`,
-            backgroundColor: `${itemColor}08`
+            backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
+            borderColor: theme === 'dark' 
+              ? 'rgba(255,255,255,0.1)' 
+              : 'rgba(0, 0, 0, 0.08)',
           }
         ]}
         onPress={() => openSubDrawer(section)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <View style={[styles.settingsIcon, { backgroundColor: `${itemColor}20` }]}>
-          <Feather name={sectionData.icon as any} size={20} color={itemColor} />
+        <View style={styles.iconContainer}>
+          <Feather name={sectionData.icon as any} size={16} color={itemColor} />
         </View>
-        <View style={styles.settingsContent}>
-          <Text style={[styles.settingsTitle, { color: colors.text }]}>
-            {sectionData.title}
-          </Text>
-          <Text style={[styles.settingsSubtitle, { color: colors.textMuted }]}>
-            {sectionData.description}
-          </Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={itemColor} />
+        <Text style={[
+          styles.settingsTitle, 
+          { color: colors.text }
+        ]}>
+          {sectionData.title}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -580,13 +563,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {sectionData.items.map((item, index) => {
             const itemColor = getSettingsIconColor(index + 12); // Offset to get different colors
             return (
-              <View key={item.key} style={[
-                styles.subDrawerItem, 
-                { 
-                  borderColor: `${itemColor}30`,
-                  backgroundColor: `${itemColor}08`
-                }
-              ]}>
+              <TouchableOpacity 
+                key={item.key} 
+                style={[
+                  styles.subDrawerItem, 
+                  { 
+                    backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
+                    borderColor: theme === 'dark' 
+                      ? 'rgba(255,255,255,0.1)' 
+                      : 'rgba(0, 0, 0, 0.08)',
+                  }
+                ]}
+                activeOpacity={0.8}
+                onPress={item.type === 'switch' ? () => handleSubDrawerItem(activeSubDrawer, { ...item, value: !item.value }) : undefined}
+              >
+                <View style={styles.iconContainer}>
+                  {item.type === 'switch' && <Feather name="toggle-left" size={16} color={itemColor} />}
+                  {item.type === 'action' && <Feather name={(item as any).destructive ? "trash-2" : "download"} size={16} color={itemColor} />}
+                </View>
+                
                 <View style={styles.subDrawerItemContent}>
                   <Text style={[styles.subDrawerItemLabel, { color: colors.text }]}>
                     {item.label}
@@ -599,43 +594,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       thumbColor={colors.surface}
                     />
                   )}
-                  {item.type === 'slider' && (
-                    <View style={styles.sliderContainer}>
-                      <Slider
-                        style={styles.slider}
-                        minimumValue={(item as any).min}
-                        maximumValue={(item as any).max}
-                        value={item.value as number}
-                        onValueChange={handleTextSizeChange}
-                        minimumTrackTintColor={itemColor}
-                        maximumTrackTintColor={colors.surfaces.sunken}
-                        thumbTintColor={itemColor}
-                      />
-                      <Text style={[styles.sliderValue, { color: colors.textMuted }]}>
-                        {Math.round(item.value as number)}px
-                      </Text>
-                    </View>
-                  )}
                   {item.type === 'action' && (
                     <TouchableOpacity
                       style={[
                         styles.actionButton,
                         (item as any).destructive 
-                          ? { backgroundColor: '#ff4757' }
-                          : { backgroundColor: `${itemColor}20` }
+                          ? { backgroundColor: 'rgba(255, 71, 87, 0.15)', borderWidth: 1, borderColor: 'rgba(255, 71, 87, 0.3)' }
+                          : { backgroundColor: `${itemColor}15`, borderWidth: 1, borderColor: `${itemColor}30` }
                       ]}
                       onPress={() => handleSubDrawerItem(activeSubDrawer, item)}
                     >
                       <Text style={[
                         styles.actionButtonText,
-                        { color: (item as any).destructive ? 'white' : itemColor }
+                        { color: (item as any).destructive ? '#ff4757' : itemColor }
                       ]}>
                         {item.label}
                       </Text>
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </Animated.ScrollView>
@@ -691,9 +669,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Account Section - Show first if signed in */}
             {isSignedIn && (
               <Animated.View style={[styles.accountSection, { opacity: accountSectionOpacity }]}>
-                <TouchableOpacity style={[styles.accountItem, { borderColor: colors.borders.default }]}>
-                  <View style={[styles.accountIcon, { backgroundColor: `${getSettingsIconColor(0)}20` }]}>
-                    <Feather name="user" size={20} color={getSettingsIconColor(0)} />
+                <TouchableOpacity style={[
+                  styles.accountItem, 
+                  { 
+                    backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
+                    borderColor: theme === 'dark' 
+                      ? 'rgba(255,255,255,0.1)' 
+                      : 'rgba(0, 0, 0, 0.08)',
+                  }
+                ]}>
+                  <View style={styles.iconContainer}>
+                    <Feather name="user" size={16} color={getSettingsIconColor(0)} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={[styles.accountEmail, { color: colors.text }]}>
@@ -723,34 +709,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               
               <TouchableOpacity 
                 style={[styles.quickAction, { 
-                  borderColor: `${getSettingsIconColor(10)}30`,
-                  backgroundColor: `${getSettingsIconColor(10)}08`
+                  backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
+                  borderColor: theme === 'dark' 
+                    ? 'rgba(255,255,255,0.1)' 
+                    : 'rgba(0, 0, 0, 0.08)',
                 }]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   // TODO: Navigate to help & support screen
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: `${getSettingsIconColor(10)}20` }]}>
-                  <Feather name="help-circle" size={18} color={getSettingsIconColor(10)} />
+                <View style={styles.iconContainer}>
+                  <Feather name="help-circle" size={16} color={getSettingsIconColor(10)} />
                 </View>
                 <Text style={[styles.quickActionText, { color: colors.text }]}>Help & Support</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.quickAction, { 
-                  borderColor: `${getSettingsIconColor(11)}30`,
-                  backgroundColor: `${getSettingsIconColor(11)}08`
+                  backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.03)',
+                  borderColor: theme === 'dark' 
+                    ? 'rgba(255,255,255,0.1)' 
+                    : 'rgba(0, 0, 0, 0.08)',
                 }]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   // TODO: Navigate to about screen
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: `${getSettingsIconColor(11)}20` }]}>
-                  <Feather name="info" size={18} color={getSettingsIconColor(11)} />
+                <View style={styles.iconContainer}>
+                  <Feather name="info" size={16} color={getSettingsIconColor(11)} />
                 </View>
                 <Text style={[styles.quickActionText, { color: colors.text }]}>About Numina</Text>
               </TouchableOpacity>
@@ -827,8 +817,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontFamily: typography.fonts.body,
-    fontWeight: '700',
+    fontFamily: typography.fonts.headingSemiBold,
+    fontWeight: '600',
     fontSize: 22,
   },
   closeButton: {
@@ -861,10 +851,12 @@ const styles = StyleSheet.create({
   accountItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[3],
+    height: 48,
     borderRadius: 12,
+    marginHorizontal: spacing[1],
+    marginVertical: 2,
+    paddingHorizontal: spacing[4],
     borderWidth: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   accountIcon: {
     width: 40,
@@ -900,24 +892,23 @@ const styles = StyleSheet.create({
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[3],
+    height: 48,
     borderRadius: 12,
+    marginHorizontal: spacing[1],
+    marginVertical: 2,
+    paddingHorizontal: spacing[4],
     borderWidth: 1,
-    marginBottom: spacing[2],
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
-  settingsIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
+  iconContainer: {
+    width: 24,
     alignItems: 'center',
     marginRight: spacing[3],
   },
   settingsTitle: {
     fontFamily: typography.fonts.body,
-    fontSize: typography.scale.base,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
   },
   settingsSubtitle: {
     fontFamily: typography.fonts.body,
@@ -950,7 +941,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   subDrawerTitle: {
-    fontFamily: typography.fonts.body,
+    fontFamily: typography.fonts.headingSemiBold,
     fontSize: typography.scale.xl,
     fontWeight: '600',
   },
@@ -959,55 +950,44 @@ const styles = StyleSheet.create({
     padding: spacing[4],
   },
   subDrawerItem: {
-    paddingVertical: spacing[4],
-    paddingHorizontal: spacing[3],
-    borderBottomWidth: 1,
-    marginHorizontal: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
     borderRadius: 12,
-    marginBottom: spacing[3],
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    marginHorizontal: spacing[1],
+    marginVertical: 2,
+    paddingHorizontal: spacing[4],
+    borderWidth: 1,
   },
   subDrawerItemContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flex: 1,
     minHeight: 44,
   },
   subDrawerItemLabel: {
     fontFamily: typography.fonts.body,
-    fontSize: typography.scale.base,
+    fontSize: 15,
     fontWeight: '500',
+    letterSpacing: -0.1,
     flex: 1,
-  },
-  
-  // Slider
-  sliderContainer: {
-    width: 120,
-    alignItems: 'center',
-  },
-  slider: {
-    width: 100,
-    height: 20,
-  },
-  sliderValue: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.scale.sm,
-    marginTop: spacing[1],
   },
   
   // Action Button
   actionButton: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    borderRadius: 10,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    minWidth: 100,
+    minWidth: 80,
     alignItems: 'center',
   },
   actionButtonText: {
     fontFamily: typography.fonts.body,
-    fontSize: typography.scale.base,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.1,
   },
   
   // Quick Actions
@@ -1015,7 +995,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
   },
   sectionTitle: {
-    fontFamily: typography.fonts.body,
+    fontFamily: typography.fonts.headingSemiBold,
     fontSize: typography.scale.lg,
     fontWeight: '600',
     marginBottom: spacing[3],
@@ -1023,10 +1003,12 @@ const styles = StyleSheet.create({
   quickAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[3],
+    height: 48,
     borderRadius: 12,
+    marginHorizontal: spacing[1],
+    marginVertical: 2,
+    paddingHorizontal: spacing[4],
     borderWidth: 1,
-    marginBottom: spacing[2],
   },
   quickActionIcon: {
     width: 32,
@@ -1037,8 +1019,9 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontFamily: typography.fonts.body,
-    fontSize: typography.scale.base,
-    marginLeft: spacing[3],
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
   },
 });
 

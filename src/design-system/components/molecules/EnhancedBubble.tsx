@@ -4,7 +4,7 @@
  * The KING of message bubbles
  */
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ import { spacing, borderRadius } from '../../tokens/spacing';
 import { getNeumorphicStyle } from '../../tokens/shadows';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
 import { ToolCall } from '../../../types';
-import BasicMarkdown from '../atoms/BasicMarkdown';
 
 const { width } = Dimensions.get('window');
 
@@ -85,12 +84,12 @@ interface AnimatedMessageBubbleProps {
   colorfulBubblesEnabled?: boolean;
 }
 
-// Streaming text with markdown support including lists
+// Simple streaming text - no markdown processing to avoid word concatenation
 const StreamingText: React.FC<{
   text: string;
   theme: 'light' | 'dark';
   isStreaming?: boolean;
-}> = ({ text, theme, isStreaming = false }) => {
+}> = memo(({ text, theme, isStreaming = false }) => {
   const baseTextStyle = {
     fontSize: 17,
     lineHeight: 26,
@@ -102,12 +101,12 @@ const StreamingText: React.FC<{
 
   return (
     <View>
-      <BasicMarkdown theme={theme} style={baseTextStyle}>
+      <Text style={baseTextStyle}>
         {`${text}${isStreaming ? '|' : ''}`}
-      </BasicMarkdown>
+      </Text>
     </View>
   );
-};
+});
 
 
 // StreamContent - Simple streaming text
@@ -116,7 +115,7 @@ const StreamContent: React.FC<{
   theme: 'light' | 'dark';
   messageId?: string;
   isStreaming?: boolean;
-}> = ({ text, theme, messageId, isStreaming }) => {
+}> = memo(({ text, theme, messageId, isStreaming }) => {
   const safeText = text || '';
   
   // Show Lottie animation for typing indicator or empty streaming message
@@ -141,9 +140,9 @@ const StreamContent: React.FC<{
       />
     </View>
   );
-};
+});
 
-const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = ({
+const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = memo(({
   message,
   index,
   onLongPress,
@@ -159,6 +158,11 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = ({
   const isUser = message.sender === 'user';
   const isSystem = message.isSystem || message.sender === 'system';
   const isStreaming = message.variant === 'streaming';
+
+  // Memoized long press handler
+  const handleLongPress = useCallback(() => {
+    onLongPress?.(message);
+  }, [onLongPress, message]);
 
   // Animation on mount
   useEffect(() => {
@@ -195,7 +199,7 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = ({
       ]}
     >
       <TouchableOpacity
-        onLongPress={() => onLongPress?.(message)}
+        onLongPress={handleLongPress}
         activeOpacity={0.7}
         disabled={isSystem}
       >
@@ -246,7 +250,7 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = ({
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   messageContainer: {

@@ -16,6 +16,8 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -25,10 +27,11 @@ import { PageBackground } from '../../design-system/components/atoms/PageBackgro
 import LottieLoader from '../../design-system/components/atoms/LottieLoader';
 import Button from '../../design-system/components/atoms/Button';
 import { Header, HeaderMenu, SignOutModal } from '../../design-system/components/organisms';
+import { EngineCard } from '../../design-system/components/molecules';
 import SettingsModal from '../chat/SettingsModal';
 
 // Design System
-import { designTokens, getThemeColors } from '../../design-system/tokens/colors';
+import { designTokens, getThemeColors, getButtonColors } from '../../design-system/tokens/colors';
 import { typography } from '../../design-system/tokens/typography';
 import { spacing } from '../../design-system/tokens/spacing';
 import { createNeumorphicContainer } from '../../design-system/tokens/shadows';
@@ -75,7 +78,7 @@ interface LiveData {
 
 const EngineScreen: React.FC = () => {
   const { theme, colors } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   
   // State
   const [metrics, setMetrics] = useState<EngineMetric[]>([]);
@@ -89,7 +92,6 @@ const EngineScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
   const [dataSubtypes, setDataSubtypes] = useState<DataSubtype[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionType, setCompressionType] = useState<'full' | 'behavioral' | 'emotional' | 'patterns'>('full');
@@ -282,24 +284,9 @@ const EngineScreen: React.FC = () => {
     }
   };
 
-  // Get real-time analytics data
-  const startLiveUpdates = async () => {
-    try {
-      // Get real-time insights from the analytics API
-      const response = await AnalyticsAPI.getRealUBPMAnalysis();
-      if (response?.success) {
-        setStreamingText('Real-time analytics: ' + (response.insights || 'Processing behavioral patterns...'));
-      }
-    } catch (error) {
-      console.log('Live analytics not available:', error);
-      setStreamingText('Analytics engine ready - processing behavioral data in real-time');
-    }
-  };
-
   // Load data on mount
   useEffect(() => {
     loadEngineData();
-    startLiveUpdates();
   }, []);
 
   // Real-time polling - more efficient with staggered updates
@@ -385,7 +372,6 @@ const EngineScreen: React.FC = () => {
       
       // Refresh data after compression
       await loadEngineData(false);
-      await startLiveUpdates(); // Refresh streaming text
     } catch (error: any) {
       console.error('Engine compression error:', error);
       Alert.alert(
@@ -408,6 +394,29 @@ const EngineScreen: React.FC = () => {
     };
     return colorMap[type];
   };
+
+  // Handle engine card press
+  const handleEngineCardPress = (engineId: string, engineTitle: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate('EngineDetail', { engineId, engineTitle });
+  };
+
+  // Render engine card
+  const renderEngineCard = ({ item, index }: { item: EngineMetric; index: number }) => (
+    <Animated.View style={{ opacity: animationValues[index] }}>
+      <EngineCard
+        id={item.id}
+        title={item.title}
+        value={item.value}
+        subtitle={item.subtitle}
+        color={item.color}
+        trend={item.trend}
+        live={item.live}
+        theme={theme as 'light' | 'dark'}
+        onPress={() => handleEngineCardPress(item.id, item.title)}
+      />
+    </Animated.View>
+  );
 
   // Render metric card
   const renderMetricCard = (metric: EngineMetric, index: number) => (
@@ -467,6 +476,18 @@ const EngineScreen: React.FC = () => {
           theme={theme as 'light' | 'dark'}
           isVisible={true}
           isMenuOpen={showHeaderMenu}
+          rightIcon={
+            <TouchableOpacity
+              onPress={handleEngineCompression}
+              disabled={isCompressing}
+              activeOpacity={0.7}
+              style={styles.headerIcon}
+            >
+              <Text style={[styles.headerIconText, { color: colors.text }]}>
+                {isCompressing ? '↻' : '▶'}
+              </Text>
+            </TouchableOpacity>
+          }
         />
 
         <HeaderMenu
@@ -498,22 +519,20 @@ const EngineScreen: React.FC = () => {
             />
           }
         >
-          {/* Live Status Banner */}
-          <View style={[styles.statusBanner, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}>
-            <View style={styles.statusContent}>
-              <View style={[styles.statusDot, { backgroundColor: designTokens.semantic.success }]} />
-              <Text style={[styles.statusText, { color: colors.text }]}>
-                Engine Active • {liveData.messages} messages • {liveData.activePatterns} patterns
-              </Text>
-            </View>
-            <Text style={[styles.statusSubtext, { color: colors.textMuted }]}>
-              Real-time behavioral analysis
-            </Text>
-          </View>
 
-          {/* Metrics Grid */}
-          <View style={styles.metricsGrid}>
-            {metrics.map((metric, index) => renderMetricCard(metric, index))}
+          {/* Engine Cards FlatList */}
+          <View style={styles.engineCardsContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Analytics Engines
+            </Text>
+            <FlatList
+              data={metrics}
+              renderItem={renderEngineCard}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+              contentContainerStyle={styles.flatListContainer}
+            />
           </View>
 
           {/* Data Subtypes */}
@@ -541,40 +560,8 @@ const EngineScreen: React.FC = () => {
             </View>
           )}
 
-          {/* Engine Compression */}
-          <View style={[styles.compressionContainer, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}>
-            <Text style={[styles.compressionTitle, { color: colors.text }]}>
-              Engine Compression
-            </Text>
-            <Text style={[styles.compressionSubtitle, { color: colors.textMuted }]}>
-              Optimize and compress behavioral data
-            </Text>
-            
-            <Button
-              variant="primary"
-              size="md"
-              theme={theme as 'light' | 'dark'}
-              state={isCompressing ? 'loading' : 'default'}
-              onPress={handleEngineCompression}
-              style={styles.compressionButton}
-              fullWidth
-            >
-              {isCompressing ? 'Compressing...' : 'Run Engine Compression'}
-            </Button>
-          </View>
-
-          {/* Streaming Test */}
-          {streamingText && (
-            <View style={[styles.streamContainer, createNeumorphicContainer(theme as 'light' | 'dark', 'elevated')]}>
-              <Text style={[styles.streamTitle, { color: colors.text }]}>
-                Live Stream
-              </Text>
-              <Text style={[styles.streamText, { color: colors.textMuted }]}>
-                {streamingText}
-              </Text>
-            </View>
-          )}
         </ScrollView>
+
 
         <SignOutModal
           visible={showSignOutModal}
@@ -624,31 +611,6 @@ const styles = StyleSheet.create({
     height: 40,
   },
 
-  // Status Banner
-  statusBanner: {
-    padding: spacing[4],
-    borderRadius: 16,
-    marginBottom: spacing[4],
-  },
-  statusContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[1],
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing[2],
-  },
-  statusText: {
-    ...typography.textStyles.body,
-    fontWeight: '600',
-  },
-  statusSubtext: {
-    ...typography.textStyles.caption,
-    marginLeft: spacing[5],
-  },
 
   // Metrics
   metricsGrid: {
@@ -694,6 +656,19 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  // Engine Cards
+  engineCardsContainer: {
+    marginBottom: spacing[4],
+  },
+  sectionTitle: {
+    ...typography.textStyles.headlineLarge,
+    fontWeight: '700',
+    marginBottom: spacing[3],
+  },
+  flatListContainer: {
+    paddingBottom: spacing[2],
+  },
+
   // Subtypes
   subtypesContainer: {
     padding: spacing[4],
@@ -730,39 +705,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Compression
-  compressionContainer: {
-    padding: spacing[4],
-    borderRadius: 16,
-    marginBottom: spacing[4],
+  // Header Icon
+  headerIcon: {
+    padding: spacing[2],
   },
-  compressionTitle: {
-    ...typography.textStyles.bodyLarge,
+  headerIconText: {
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: spacing[1],
-  },
-  compressionSubtitle: {
-    ...typography.textStyles.body,
-    marginBottom: spacing[3],
-  },
-  compressionButton: {
-    height: 40,
   },
 
-  // Stream
-  streamContainer: {
-    padding: spacing[4],
-    borderRadius: 16,
-  },
-  streamTitle: {
-    ...typography.textStyles.body,
-    fontWeight: '600',
-    marginBottom: spacing[2],
-  },
-  streamText: {
-    ...typography.textStyles.bodySmall,
-    lineHeight: 20,
-  },
 });
 
 export default EngineScreen;

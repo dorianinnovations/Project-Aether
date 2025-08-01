@@ -1,191 +1,174 @@
-/**
- * Numina Design System - Color Tokens
- * Based on sophisticated neumorphic design with dual-theme support
- */
-
 export const designTokens = {
-  // Primary Brand Colors - Clean OLED & Rainbow Pastels
   brand: {
-    primary: '#E6F3FF',        // Light mode - light baby blue
-    primaryDark: '#E6F3FF',    // Dark mode - same light baby blue
-    accent: '#B3E5FC',         // Pastel cyan
-    accentSecondary: '#FFCC80', // Pastel orange
-    surface: '#FEFEFE',        // Almost white (light)
-    surfaceDark: '#202020',    // Dark surface for dark mode
-    backgroundLight: '#FAFAFA', // Off-white background
-    backgroundDark: '#000000',  // Pure black background for dark mode
+    primary: '#E6F3FF',
+    primaryDark: '#E6F3FF',
+    accent: '#B3E5FC',
+    accentSecondary: '#FFCC80',
+    surface: '#FEFEFE',
+    surfaceDark: '#202020',
+    backgroundLight: '#FAFAFA',
+    backgroundDark: '#000000',
   },
   
-  // Vibrant Soft Pastels - Perfect for icons and UI elements ✨
   pastels: {
-    pink: '#FFB3D1',          // Vibrant soft pink
-    cyan: '#87E8DE',          // Vibrant soft cyan  
-    orange: '#FFB347',        // Vibrant soft peach
-    purple: '#D8BFD8',        // Vibrant soft lavender
-    green: '#90EE90',         // Vibrant soft mint green
-    yellow: '#FFEB9C',        // Vibrant soft butter yellow
-    coral: '#FFA07A',         // Vibrant soft coral
-    mint: '#98FB98',          // Vibrant soft mint
-    blue: '#87CEEB',          // Vibrant soft sky blue
-    rose: '#FFB6C1',          // Vibrant soft rose
-    sage: '#9ACD32',          // Vibrant soft sage green
-    cream: '#FFEFD5',         // Vibrant soft cream
+    pink: '#FFB3D1',
+    cyan: '#87E8DE',
+    orange: '#FFB347',
+    purple: '#D8BFD8',
+    green: '#90EE90',
+    yellow: '#FFEB9C',
+    coral: '#FFA07A',
+    mint: '#98FB98',
+    blue: '#87CEEB',
+    rose: '#FFB6C1',
+    sage: '#9ACD32',
+    cream: '#FFEFD5',
   },
   
-  // Semantic Colors - Using Rainbow Pastels
   semantic: {
-    success: '#C8E6C9',        // Pastel green - achievements, growth
-    error: '#FFCDD2',          // Pastel coral - errors, warnings
-    warning: '#FFF9C4',        // Pastel yellow - caution, attention
-    info: '#B3E5FC',           // Pastel cyan - information, tips
-    love: '#E6F3FF',           // Light baby blue - connections, relationships
-    wisdom: '#E1BEE7',         // Pastel purple - insights, intelligence
+    success: '#C8E6C9',
+    error: '#FFCDD2',
+    warning: '#FFF9C4',
+    info: '#B3E5FC',
+    love: '#E6F3FF',
+    wisdom: '#E1BEE7',
   },
 
-  // Vibrant Dark Mode Semantic Colors - Much more visible!
   semanticDark: {
-    success: '#7DCE82',        // Bright green - achievements, growth
-    error: '#FF6B9D',          // Bright coral - errors, warnings  
-    warning: '#FFD23F',        // Bright yellow - caution, attention
-    info: '#4ECDC4',           // Bright cyan - information, tips
-    love: '#4CB8FF',           // Bright blue - connections, relationships
-    wisdom: '#C77DFF',         // Bright purple - insights, intelligence
+    success: '#7DCE82',
+    error: '#FF6B9D',
+    warning: '#FFD23F',
+    info: '#4ECDC4',
+    love: '#4CB8FF',
+    wisdom: '#C77DFF',
   },
   
-  // Text Color Hierarchy - Clean & High Contrast
   text: {
-    primary: '#1a1a1a',        // Light mode primary text (dark grey)
-    primaryDark: '#ffffff',     // Dark mode primary text (pure white)
-    secondary: '#666666',       // Light mode secondary text (medium grey)
-    secondaryDark: '#cccccc',   // Dark mode secondary text (light grey)
-    muted: '#999999',           // Light mode muted text (lighter grey)
-    mutedDark: '#888888',       // Dark mode muted text (medium grey)
-    placeholder: '#cccccc',     // Light mode placeholder
-    placeholderDark: '#666666', // Dark mode placeholder
+    primary: '#1a1a1a',
+    primaryDark: '#ffffff',
+    secondary: '#666666',
+    secondaryDark: '#cccccc',
+    muted: '#999999',
+    mutedDark: '#888888',
+    placeholder: '#cccccc',
+    placeholderDark: '#666666',
   },
   
-  // Clean Surface Colors - OLED Black & Off-White
   surfaces: {
-    // Light Theme Surfaces - Super Light Greys
     light: {
-      base: '#FAFAFA',         // Off-white base
-      elevated: '#FFFFFF',      // Pure white elevated surfaces
-      sunken: '#F5F5F5',       // Very light grey sunken
-      highlight: '#FFFFFF',     // Pure white highlight
-      shadow: '#E0E0E0',       // Light grey shadow
+      base: '#FAFAFA',
+      elevated: '#FFFFFF',
+      sunken: '#F5F5F5',
+      highlight: '#FFFFFF',
+      shadow: '#E0E0E0',
     },
-    // Dark Theme Surfaces - Balanced Dark Mode
     dark: {
-      base: '#151515',         // Dark base (good for page bg)
-      elevated: '#202020',      // Dark elevated (good for headers/buttons)
-      sunken: '#101010',       // Very dark sunken
-      highlight: '#2A2A2A',     // Medium grey highlight
-      shadow: '#000000',       // Pure black shadow
+      base: '#151515',
+      elevated: '#202020',
+      sunken: '#101010',
+      highlight: '#2A2A2A',
+      shadow: '#000000',
     }
   },
   
-  // Border System - Contrasting Light Colors
   borders: {
     light: {
-      default: '#E0E0E0',      // Light grey border
-      subtle: '#F0F0F0',       // Very light grey
-      strong: '#CCCCCC',       // Medium grey
-      accent: '#E6F3FF',       // Light baby blue accent border
+      default: '#E0E0E0',
+      subtle: '#F0F0F0',
+      strong: '#CCCCCC',
+      accent: '#E6F3FF',
     },
     dark: {
-      default: '#333333',      // Dark grey border
-      subtle: '#1A1A1A',       // Very dark grey
-      strong: '#555555',       // Medium dark grey
-      accent: '#E6F3FF',       // Light baby blue accent border
+      default: '#333333',
+      subtle: '#1A1A1A',
+      strong: '#555555',
+      accent: '#E6F3FF',
     }
   },
   
-  // Rainbow Pastel Theme Variants
   variants: {
     default: {
-      primary: '#E6F3FF',      // Light baby blue
+      primary: '#E6F3FF',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     cyan: {
-      primary: '#B3E5FC',      // Pastel cyan
+      primary: '#B3E5FC',
       background: '#FAFAFA', 
       surface: '#FFFFFF',
     },
     mint: {
-      primary: '#B2DFDB',      // Pastel mint
+      primary: '#B2DFDB',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     orange: {
-      primary: '#FFCC80',      // Pastel orange
+      primary: '#FFCC80',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     purple: {
-      primary: '#E1BEE7',      // Pastel purple
+      primary: '#E1BEE7',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     coral: {
-      primary: '#FFCDD2',      // Pastel coral
+      primary: '#FFCDD2',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     green: {
-      primary: '#C8E6C9',      // Pastel green
+      primary: '#C8E6C9',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     yellow: {
-      primary: '#FFF9C4',      // Pastel yellow
+      primary: '#FFF9C4',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     rainbow: {
-      primary: '#E6F3FF',      // Cycling rainbow primary
+      primary: '#E6F3FF',
       background: '#FAFAFA',
       surface: '#FFFFFF',
     },
     oled: {
-      primary: '#E6F3FF',      // Light baby blue for OLED
-      background: '#000000',   // Pure black for OLED
-      surface: '#000000',      // Pure black surface for OLED
+      primary: '#E6F3FF',
+      background: '#000000',
+      surface: '#000000',
     }
   }
 };
 
-// Semantic color mappings for different states - Rainbow Pastels
 export const stateColors = {
   interactive: {
-    default: designTokens.brand.primary,    // Light baby blue
-    hover: '#F0F8FF',                       // Lighter baby blue
-    pressed: '#CCE7FF',                     // Darker baby blue
-    disabled: '#F0F0F0',                    // Light grey
-    focus: designTokens.brand.primary,      // Same light baby blue
+    default: designTokens.brand.primary,
+    hover: '#F0F8FF',
+    pressed: '#CCE7FF',
+    disabled: '#F0F0F0',
+    focus: designTokens.brand.primary,
   },
   
   connection: {
-    soulResonance: '#E6F3FF',      // Light baby blue - deep connection
-    growthCompanion: '#C8E6C9',    // Pastel green - mutual growth
-    intellectualPeer: '#B3E5FC',   // Pastel cyan - mental stimulation
-    emotionalSupport: '#FFCC80',   // Pastel orange - warmth and comfort
-    creativeCollaborator: '#E1BEE7', // Pastel purple - creativity
-    wisdomExchange: '#B2DFDB',     // Pastel mint - wisdom
-    adventureBuddy: '#FFCC80',     // Pastel orange - adventure
-    philosophicalAlly: '#E1BEE7',  // Pastel purple - deep thinking
+    soulResonance: '#E6F3FF',
+    growthCompanion: '#C8E6C9',
+    intellectualPeer: '#B3E5FC',
+    emotionalSupport: '#FFCC80',
+    creativeCollaborator: '#E1BEE7',
+    wisdomExchange: '#B2DFDB',
+    adventureBuddy: '#FFCC80',
+    philosophicalAlly: '#E1BEE7',
   },
   
   numina: {
-    thinking: '#CCCCCC',          // Light grey - AI processing
-    responding: '#B3E5FC',        // Pastel cyan - AI active
-    complete: '#C8E6C9',          // Pastel green - response complete
-    error: '#FFCDD2',             // Pastel coral - AI error
-    streaming: '#E1BEE7',         // Pastel purple - streaming response
+    thinking: '#CCCCCC',
+    responding: '#B3E5FC',
+    complete: '#C8E6C9',
+    error: '#FFCDD2',
+    streaming: '#E1BEE7',
   }
 };
 
-// Export utility functions - SIMPLIFIED
 export const getThemeColors = (theme: 'light' | 'dark' = 'light') => ({
   primary: designTokens.brand.primary,
   background: theme === 'light' ? designTokens.brand.backgroundLight : designTokens.brand.backgroundDark,
@@ -197,7 +180,6 @@ export const getThemeColors = (theme: 'light' | 'dark' = 'light') => ({
   borders: designTokens.borders[theme],
 });
 
-// Border utility function for consistent borders across components
 export const getBorderStyle = (
   theme: 'light' | 'dark' = 'light', 
   variant: 'default' | 'subtle' | 'strong' | 'accent' = 'default'
@@ -206,35 +188,31 @@ export const getBorderStyle = (
   borderColor: designTokens.borders[theme][variant],
 });
 
-// Standard component border styles
 export const getComponentBorder = (theme: 'light' | 'dark' = 'light') => ({
   borderWidth: 1,
   borderColor: designTokens.borders[theme].default,
 });
 
-// Quick border utility for containers, boxes, and any component
 export const getStandardBorder = (theme: 'light' | 'dark' = 'light') => ({
   borderWidth: 1,
   borderColor: designTokens.borders[theme].default,
 });
 
-// Vibrant Dark Mode Pastels - Much more visible and alive! ✨
 export const darkModePastels = {
-  pink: '#FF8FA3',          // Vibrant coral pink
-  cyan: '#4ECDC4',          // Bright teal cyan  
-  orange: '#FFB84D',        // Bright golden orange
-  purple: '#C77DFF',        // Vibrant lavender purple
-  green: '#4ECDC4',         // Bright mint green
-  yellow: '#FFD23F',        // Vibrant sunny yellow
-  coral: '#FF6B9D',         // Bright coral
-  mint: '#4ECDC4',          // Bright mint
-  blue: '#4CB8FF',          // Vibrant sky blue
-  rose: '#FF8FA3',          // Vibrant rose
-  sage: '#7DCE82',          // Bright sage green
-  cream: '#FFEB9C',         // Bright cream yellow
+  pink: '#FF8FA3',
+  cyan: '#4ECDC4',
+  orange: '#FFB84D',
+  purple: '#C77DFF',
+  green: '#4ECDC4',
+  yellow: '#FFD23F',
+  coral: '#FF6B9D',
+  mint: '#4ECDC4',
+  blue: '#4CB8FF',
+  rose: '#FF8FA3',
+  sage: '#7DCE82',
+  cream: '#FFEB9C',
 };
 
-// Cycling pastel colors for user messages - theme aware!
 const lightPastelArray = [
   designTokens.pastels.pink,
   designTokens.pastels.cyan,
@@ -257,69 +235,58 @@ const darkPastelArray = [
   darkModePastels.mint,
 ];
 
-// Get cycling pastel color based on message index or ID - theme aware!
 export const getCyclingPastelColor = (index: number, theme: 'light' | 'dark' = 'light'): string => {
   const pastelArray = theme === 'dark' ? darkPastelArray : lightPastelArray;
   return pastelArray[index % pastelArray.length];
 };
 
-// Get user message color based on message count and settings - theme aware!
 export const getUserMessageColor = (messageIndex: number, theme: 'light' | 'dark' = 'light', colorfulEnabled?: boolean): string => {
   if (colorfulEnabled === false) {
-    // Return a standard cohesive color that matches the bot bubbles
     const themeColors = getThemeColors(theme);
     return themeColors.surface;
   }
   return getCyclingPastelColor(messageIndex, theme);
 };
 
-// Bright Pastel Icon Color System - Sequence: Red > Orange > Yellow > Green > Blue > Purple > Pink
 export const iconColors = {
-  // Menu icons in pastel bright color sequence
-  profile: '#FF6B6B',     // Bright red (first)
-  chat: '#FFB347',        // Bright orange (second)
-  dashboard: '#FFE066',   // Bright yellow (third)
-  social: '#6AE86F',      // Bright green (fourth)
-  settings: '#5CC7E8',    // Bright blue (fifth)
-  theme_toggle: '#C95FD6', // Bright purple (sixth)
-  signout: '#FF8FA3',     // Bright pink (seventh)
+  profile: '#FF6B6B',
+  chat: '#FFB347',
+  dashboard: '#FFE066',
+  social: '#6AE86F',
+  settings: '#5CC7E8',
+  theme_toggle: '#C95FD6',
+  signout: '#FF8FA3',
   
-  // Additional icons maintaining the color sequence
-  home: '#4FB3D9',        // Bright sky blue
-  help: '#FFD54F',        // Bright sunny yellow
-  notifications: '#FF8A95', // Bright rose
-  search: '#7FDBCA',      // Bright mint
-  menu: '#FFA726',        // Bright orange
-  back: '#F48FB1',        // Bright pink
-  close: '#FF8A65',       // Bright peach
+  home: '#4FB3D9',
+  help: '#FFD54F',
+  notifications: '#FF8A95',
+  search: '#7FDBCA',
+  menu: '#FFA726',
+  back: '#F48FB1',
+  close: '#FF8A65',
 };
 
 
-// Get soft pastel color for any icon by name
 export const getIconColor = (iconName: keyof typeof iconColors, theme: 'light' | 'dark' = 'light'): string => {
   const baseColor = iconColors[iconName] || '#4FB3D9';
   
-  // In dark mode, use even more vibrant versions
   if (theme === 'dark') {
-    // Map bright icons to extra vibrant dark mode versions - following color sequence
     const colorMapping: Record<string, string> = {
-      // Main menu icons (in sequence order)
-      '#FF6B6B': '#FF7B7B',    // Even brighter red (profile)
-      '#FFB347': '#FFD670',    // Even brighter orange (chat)
-      '#FFE066': '#FFF080',    // Even brighter yellow (dashboard)
-      '#6AE86F': '#7EF583',    // Even brighter green (connections)
-      '#5CC7E8': '#70D4F5',    // Even brighter blue (settings)
-      '#C95FD6': '#D670E3',    // Even brighter purple (theme_toggle)
-      '#FF8FA3': '#FFA3B7',    // Even brighter pink (signout)
+      '#FF6B6B': '#FF7B7B',
+      '#FFB347': '#FF9F66',
+      '#FFE066': '#FFF080',
+      '#6AE86F': '#7EF583',
+      '#5CC7E8': '#70D4F5',
+      '#C95FD6': '#D670E3',
+      '#FF8FA3': '#FFA3B7',
       
-      // Additional icons
-      '#4FB3D9': '#5CC7E8',    // Even brighter sky blue
-      '#FFD54F': '#FFE066',    // Even brighter yellow
-      '#FF8A95': '#FFA0AB',    // Even brighter rose
-      '#7FDBCA': '#8FE8D7',    // Even brighter mint
-      '#FFA726': '#FFB74D',    // Even brighter orange
-      '#F48FB1': '#FF9FC7',    // Even brighter pink
-      '#FF8A65': '#FF9A7A',    // Even brighter peach
+      '#4FB3D9': '#5CC7E8',
+      '#FFD54F': '#FFE066',
+      '#FF8A95': '#FFA0AB',
+      '#7FDBCA': '#8FE8D7',
+      '#FFA726': '#FFB74D',
+      '#F48FB1': '#FF9FC7',
+      '#FF8A65': '#FF9A7A',
     };
     
     return colorMapping[baseColor] || '#5CC7E8';
@@ -328,29 +295,62 @@ export const getIconColor = (iconName: keyof typeof iconColors, theme: 'light' |
   return baseColor;
 };
 
-// Loading Text Colors - Subtle gradients for depth
 export const loadingTextColors = {
   light: {
-    primary: '#2a2a2a',     // Dark grey for light mode
-    secondary: '#3a3a3a',   // Slightly lighter dark grey for gradient
+    primary: '#2a2a2a',
+    secondary: '#3a3a3a',
   },
   dark: {
-    primary: '#e0e0e0',     // Bright grey for dark mode  
-    secondary: '#f0f0f0',   // Slightly brighter grey for gradient
+    primary: '#e0e0e0',
+    secondary: '#f0f0f0',
   }
 };
 
-// Get loading text color with subtle gradient effect
 export const getLoadingTextColor = (theme: 'light' | 'dark' = 'light', variant: 'primary' | 'secondary' = 'primary'): string => {
   return loadingTextColors[theme][variant];
 };
 
-// Get semantic color based on theme - much more vibrant in dark mode!
 export const getSemanticColor = (
   semantic: 'success' | 'error' | 'warning' | 'info' | 'love' | 'wisdom',
   theme: 'light' | 'dark' = 'light'
 ): string => {
   return theme === 'dark' ? designTokens.semanticDark[semantic] : designTokens.semantic[semantic];
+};
+
+// Button-specific color tokens
+export const buttonColors = {
+  light: {
+    engineCompression: {
+      background: '#FF6B35',
+      border: '#E55A2B',
+      text: '#FFFFFF',
+    },
+    editProfile: {
+      background: '#8B5CF6',
+      border: '#7C3AED',
+      text: '#FFFFFF',
+    },
+  },
+  dark: {
+    engineCompression: {
+      background: '#FF7A47',
+      border: '#FF6B35',
+      text: '#FFFFFF',
+    },
+    editProfile: {
+      background: '#A78BFA',
+      border: '#8B5CF6',
+      text: '#FFFFFF',
+    },
+  },
+};
+
+// Get button colors by type and theme
+export const getButtonColors = (
+  buttonType: 'engineCompression' | 'editProfile',
+  theme: 'light' | 'dark' = 'light'
+) => {
+  return buttonColors[theme][buttonType];
 };
 
 export default designTokens;

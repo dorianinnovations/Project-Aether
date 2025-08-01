@@ -24,6 +24,7 @@ import * as Haptics from 'expo-haptics';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
 import { AnimatedAuthStatus } from '../../design-system/components/atoms/AnimatedAuthStatus';
 import { ShimmerText } from '../../design-system/components/atoms/ShimmerText';
+import { RainbowShimmerText } from '../../design-system/components/atoms/RainbowShimmerText';
 import { Header, HeaderMenu } from '../../design-system/components/organisms';
 import { designTokens, getThemeColors, stateColors } from '../../design-system/tokens/colors';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -914,7 +915,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           style={{ 
                             opacity: buttonGlowAnim,
                             shadowColor: getMinimalGlowColor(),
-                            shadowOffset: { width: 0, height: 0 },
+                            shadowOffset: { width: 2, height: 2 },
                             shadowOpacity: 1,
                             shadowRadius: 6,
                             borderRadius: 12,
@@ -934,7 +935,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               borderColor: theme === 'dark' ? '#262626' : 'transparent',
                               borderWidth: theme === 'dark' ? 1 : 0,
                               shadowColor: '#ffffff',
-                              shadowOffset: { width: 0, height: 0 },
+                              shadowOffset: { width: 2, height: 2 },
                               shadowOpacity: theme === 'dark' ? 0.15 : 0.1,
                               shadowRadius: 4,
                               elevation: theme === 'dark' ? 3 : 2,
@@ -961,14 +962,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   Success!
                                 </Text>
                               ) : (
-                                <ShimmerText
-                                  customShimmerColor={rainbowPastels[currentColorIndex]}
+                                <RainbowShimmerText
                                   style={StyleSheet.flatten([styles.primaryButtonText, { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }])}
                                   intensity="vibrant"
-                                  duration={1500}
+                                  duration={4000}
+                                  waveWidth="wide"
+                                  colorMode="rainbow-cycle"
                                 >
                                   Create Account
-                                </ShimmerText>
+                                </RainbowShimmerText>
                               )}
                             </View>
                             {authStatus !== 'idle' && (
