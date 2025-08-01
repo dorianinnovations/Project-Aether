@@ -48,6 +48,8 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
+  isRateLimit?: boolean;
+  retryAfter?: number;
 }
 
 // UBPM Types
@@ -213,6 +215,9 @@ api.interceptors.response.use(
       message: getErrorMessage(error),
       status: error.response?.status,
       code: error.response?.data?.code,
+      isRateLimit: error.response?.status === 429,
+      retryAfter: error.response?.status === 429 ? 
+        parseInt(error.response?.headers?.['retry-after'] || '60') : undefined,
     };
 
     return Promise.reject(apiError);
@@ -243,7 +248,10 @@ function getErrorMessage(error: any): string {
     case 404:
       return 'Resource not found.';
     case 429:
-      return 'Too many requests. Please wait a moment and try again.';
+      // Get retry-after header if available (in seconds)
+      const retryAfter = error.response?.headers?.['retry-after'];
+      const waitTime = retryAfter ? parseInt(retryAfter) : 60;
+      return `Rate limit reached. Please wait ${waitTime} seconds before trying again.`;
     case 500:
       return 'Server error. Please try again later.';
     case 502:
@@ -392,6 +400,31 @@ export const UserAPI = {
 
   async deleteProfilePicture(): Promise<any> {
     const response = await api.delete('/profile/picture');
+    return response.data;
+  },
+
+  async uploadBannerImage(imageUri: string): Promise<any> {
+    const formData = new FormData();
+    
+    // Create file object for React Native
+    const imageFile = {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'banner-image.jpg',
+    } as any;
+    
+    formData.append('bannerImage', imageFile);
+
+    const response = await api.post('/profile/banner', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async deleteBannerImage(): Promise<any> {
+    const response = await api.delete('/profile/banner');
     return response.data;
   },
 

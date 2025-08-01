@@ -221,11 +221,61 @@ const EngineScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load engine data:', error);
-      Alert.alert(
-        'Engine Error',
-        ApiUtils.getErrorMessage(error),
-        [{ text: 'OK', style: 'default' }]
-      );
+      
+      // Set fallback data so the screen isn't completely empty
+      setMetrics([
+        {
+          id: '1',
+          title: 'Profile Status',
+          value: 'Initializing',
+          subtitle: 'Building your profile...',
+          color: 'warning',
+          trend: 'neutral',
+        },
+        {
+          id: '2',
+          title: 'Confidence',
+          value: '0%',
+          subtitle: 'AI learning in progress',
+          color: 'info',
+          trend: 'neutral',
+        },
+        {
+          id: '3',
+          title: 'Patterns',
+          value: 0,
+          subtitle: 'No patterns detected yet',
+          color: 'love',
+          trend: 'neutral',
+        },
+        {
+          id: '4',
+          title: 'Quality',
+          value: '0%',
+          subtitle: 'No data available',
+          color: 'wisdom',
+          trend: 'neutral',
+        },
+      ]);
+      
+      setLiveData({
+        messages: 0,
+        confidence: 0,
+        status: 'offline',
+        activePatterns: 0,
+      });
+
+      // Only show error alert if this is a user-initiated action
+      if (showLoading || isRefreshing) {
+        Alert.alert(
+          'Engine Unavailable',
+          'Unable to connect to the analytics engine. Please check your connection and try again.',
+          [
+            { text: 'Retry', onPress: () => loadEngineData(true) },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      }
     } finally {
       if (showLoading) setIsLoading(false);
       setIsRefreshing(false);
@@ -261,7 +311,7 @@ const EngineScreen: React.FC = () => {
     ubpmInterval = setInterval(async () => {
       try {
         const ubpmResponse = await AnalyticsAPI.getUBPMContext();
-        if (ubpmResponse?.success && ubmpResponse.data) {
+        if (ubpmResponse?.success && ubpmResponse.data) {
           const data = ubpmResponse.data;
           setLiveData(prev => ({
             ...prev,
@@ -311,21 +361,37 @@ const EngineScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      // Call the analytics LLM API for compression
-      const response = await AnalyticsAPI.getCognitivePatterns();
+      // Call multiple analytics endpoints for comprehensive analysis
+      const [cognitiveResponse, insightsResponse] = await Promise.all([
+        AnalyticsAPI.getCognitivePatterns(),
+        AnalyticsAPI.getPersonalInsights()
+      ]);
+      
+      let message = 'Behavioral data has been analyzed and optimized.';
+      
+      if (cognitiveResponse?.patterns) {
+        message += ` Found ${cognitiveResponse.patterns.length} cognitive patterns.`;
+      }
+      
+      if (insightsResponse?.insights) {
+        message += ` Generated ${insightsResponse.insights.length || 'new'} insights.`;
+      }
+      
       Alert.alert(
-        'Compression Complete',
-        'Behavioral data has been optimized and compressed.',
+        'Analysis Complete',
+        message,
         [{ text: 'OK', style: 'default' }]
       );
       
       // Refresh data after compression
       await loadEngineData(false);
+      await startLiveUpdates(); // Refresh streaming text
     } catch (error: any) {
+      console.error('Engine compression error:', error);
       Alert.alert(
-        'Compression Failed',
+        'Analysis Failed',
         ApiUtils.getErrorMessage(error),
-        [{ text: 'OK', style: 'default' }]
+        [{ text: 'Retry', onPress: handleEngineCompression }, { text: 'Cancel', style: 'cancel' }]
       );
     } finally {
       setIsCompressing(false);

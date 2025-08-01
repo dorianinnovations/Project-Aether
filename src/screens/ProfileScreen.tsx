@@ -18,16 +18,19 @@ import * as ImagePicker from 'expo-image-picker';
 
 // Design System
 import { PageBackground } from '../design-system/components/atoms/PageBackground';
-import { Header } from '../design-system/components/organisms';
+import { Header, HeaderMenu } from '../design-system/components/organisms';
 import { useTheme } from '../contexts/ThemeContext';
+import { useHeaderMenu } from '../design-system/hooks';
 import { typography } from '../design-system/tokens/typography';
 import { spacing } from '../design-system/tokens/spacing';
+import { getButtonColors } from '../design-system/tokens/colors';
 
 // Services
 import { UserAPI, TokenManager } from '../services/api';
 
 interface UserProfile {
   profilePicture?: string;
+  bannerImage?: string;
   name?: string;
   email: string;
   id: string;
@@ -42,12 +45,21 @@ export const ProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
+  // Header menu hook
+  const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
+    screenName: 'profile'
+  });
+
   useEffect(() => {
     loadProfile();
   }, []);
 
   const handleNavigateBack = () => {
     navigation.goBack();
+  };
+
+  const handleMenuPress = () => {
+    toggleHeaderMenu();
   };
 
   const loadProfile = async () => {
@@ -62,6 +74,7 @@ export const ProfileScreen: React.FC = () => {
           email: userData.email,
           name: userData.name,
           profilePicture: response.data.profilePicture,
+          bannerImage: response.data.bannerImage,
         });
       }
     } catch (error) {
@@ -125,6 +138,42 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const pickBannerImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant photo library permissions.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      try {
+        setUploading(true);
+        const response = await UserAPI.uploadBannerImage(result.assets[0].uri);
+        
+        if (response.status === 'success') {
+          // Update local profile state with new banner
+          setProfile(prev => prev ? {
+            ...prev,
+            bannerImage: response.data.bannerImage
+          } : null);
+          Alert.alert('Success', 'Banner image updated successfully!');
+        }
+      } catch (error) {
+        console.error('Error uploading banner image:', error);
+        Alert.alert('Error', 'Failed to upload banner image. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    }
+  };
+
   const deleteProfilePicture = async () => {
     Alert.alert(
       'Delete Profile Picture',
@@ -157,6 +206,38 @@ export const ProfileScreen: React.FC = () => {
     );
   };
 
+  const deleteBannerImage = async () => {
+    Alert.alert(
+      'Delete Banner Image',
+      'Are you sure you want to remove your banner image?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUploading(true);
+              await UserAPI.deleteBannerImage();
+              
+              // Update local profile state
+              setProfile(prev => prev ? {
+                ...prev,
+                bannerImage: undefined
+              } : null);
+              Alert.alert('Success', 'Banner image deleted successfully!');
+            } catch (error) {
+              console.error('Error deleting banner image:', error);
+              Alert.alert('Error', 'Failed to delete banner image. Please try again.');
+            } finally {
+              setUploading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleFieldChange = (field: keyof UserProfile, value: string) => {
     if (!profile) return;
     setProfile(prev => prev ? ({
@@ -177,7 +258,10 @@ export const ProfileScreen: React.FC = () => {
           <Header 
             title="Profile"
             showBackButton={true}
+            showMenuButton={true}
             onBackPress={handleNavigateBack}
+            onMenuPress={handleMenuPress}
+            isMenuOpen={showHeaderMenu}
             theme={theme}
           />
           <View style={styles.loadingContainer}>
@@ -201,7 +285,10 @@ export const ProfileScreen: React.FC = () => {
           <Header 
             title="Profile"
             showBackButton={true}
+            showMenuButton={true}
             onBackPress={handleNavigateBack}
+            onMenuPress={handleMenuPress}
+            isMenuOpen={showHeaderMenu}
             theme={theme}
           />
           <View style={styles.errorContainer}>
@@ -221,56 +308,96 @@ export const ProfileScreen: React.FC = () => {
   return (
     <PageBackground theme={theme} variant="profile">
       <SafeAreaView style={styles.container}>
-        <StatusBar 
-          barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} 
-          backgroundColor="transparent"
-          translucent={true}
-        />
-        
-        <Header 
-          title="Profile"
-          showBackButton={true}
-          onBackPress={handleNavigateBack}
-          theme={theme}
-        />
-
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {/* Profile Header */}
-          <View style={styles.profileHeader}>
-            <TouchableOpacity 
-              style={styles.profileImageContainer} 
-              onPress={pickImage}
-              disabled={uploading}
-            >
-              {profile.profilePicture ? (
-                <Image source={{ uri: profile.profilePicture }} style={styles.profileImage} />
-              ) : (
-                <View style={[styles.profileImage, styles.placeholderImage, { backgroundColor: colors.surface }]}>
-                  <Feather name="user" size={48} color={colors.textSecondary} />
-                </View>
-              )}
-              {uploading ? (
-                <View style={[styles.editImageOverlay, { backgroundColor: colors.primary }]}>
-                  <ActivityIndicator size={16} color="white" />
-                </View>
-              ) : (
-                <View style={[styles.editImageOverlay, { backgroundColor: colors.primary }]}>
-                  <Feather name="camera" size={16} color="white" />
-                </View>
-              )}
-            </TouchableOpacity>
-            
-            {/* Delete Profile Picture Button */}
-            {profile.profilePicture && !uploading && (
-              <TouchableOpacity 
-                style={[styles.deleteImageButton, { backgroundColor: '#ff4757' }]}
-                onPress={deleteProfilePicture}
+          <StatusBar 
+            barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} 
+            backgroundColor="transparent"
+            translucent={true}
+          />
+          
+          <Header 
+            title="Profile"
+            showBackButton={true}
+            showMenuButton={true}
+            onBackPress={handleNavigateBack}
+            onMenuPress={handleMenuPress}
+            isMenuOpen={showHeaderMenu}
+            theme={theme}
+            rightIcon={
+              <TouchableOpacity
+                onPress={editMode ? saveProfile : () => setEditMode(true)}
+                activeOpacity={0.7}
+                style={styles.headerIcon}
               >
-                <Feather name="trash-2" size={16} color="white" />
-                <Text style={styles.deleteImageText}>Remove Photo</Text>
+                <Feather 
+                  name={editMode ? 'save' : 'edit'} 
+                  size={18} 
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+            }
+          />
+
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* Profile Banner */}
+          <TouchableOpacity 
+            style={[styles.profileBanner, { backgroundColor: colors.surface }]}
+            onPress={editMode ? pickBannerImage : undefined}
+            disabled={uploading || !editMode}
+            activeOpacity={editMode ? 0.8 : 1}
+          >
+            {profile.bannerImage && (
+              <Image source={{ uri: profile.bannerImage }} style={styles.bannerImage} />
+            )}
+            {editMode && (
+              <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0,0,0,0.3)' }]}>
+                <Feather name="camera" size={24} color="white" />
+                <Text style={styles.bannerOverlayText}>Change Banner</Text>
+              </View>
+            )}
+            {/* Delete Banner Button - only show in edit mode and when banner exists */}
+            {profile.bannerImage && !uploading && editMode && (
+              <TouchableOpacity 
+                style={[styles.deleteBannerButton, { backgroundColor: '#98FB98' }]}
+                onPress={deleteBannerImage}
+              >
+                <Feather name="x" size={16} color="#2D5A3D" />
               </TouchableOpacity>
             )}
-          </View>
+            {/* Profile Header */}
+            <View style={styles.profileHeader}>
+              <TouchableOpacity 
+                style={styles.profileImageContainer} 
+                onPress={editMode ? pickImage : undefined}
+                disabled={uploading || !editMode}
+              >
+                {profile.profilePicture ? (
+                  <Image source={{ uri: profile.profilePicture }} style={styles.profileImage} />
+                ) : (
+                  <View style={[styles.profileImage, styles.placeholderImage, { backgroundColor: colors.surface }]}>
+                    <Feather name="user" size={48} color={colors.textSecondary} />
+                  </View>
+                )}
+                {editMode && (uploading ? (
+                  <View style={[styles.editImageOverlay, { backgroundColor: '#87CEEB' }]}>
+                    <ActivityIndicator size={16} color="white" />
+                  </View>
+                ) : (
+                  <View style={[styles.editImageOverlay, { backgroundColor: '#87CEEB' }]}>
+                    <Feather name="camera" size={16} color="white" />
+                  </View>
+                ))}
+                {/* Delete Profile Picture Button - only show in edit mode */}
+                {profile.profilePicture && !uploading && editMode && (
+                  <TouchableOpacity 
+                    style={[styles.deleteImageButton, { backgroundColor: '#98FB98' }]}
+                    onPress={deleteProfilePicture}
+                  >
+                    <Feather name="x" size={14} color="#2D5A3D" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
 
           {/* Profile Fields */}
           <View style={styles.fieldsContainer}>
@@ -300,34 +427,20 @@ export const ProfileScreen: React.FC = () => {
               <Text style={[styles.fieldValue, { color: colors.text, opacity: 0.7 }]}>
                 {profile.email}
               </Text>
-              <Text style={[styles.fieldHint, { color: colors.textSecondary }]}>
-                Email cannot be changed from this screen
-              </Text>
             </View>
 
-            <View style={styles.fieldContainer}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>User ID</Text>
-              <Text style={[styles.fieldValue, { color: colors.textSecondary, fontSize: 12, fontFamily: 'monospace' }]}>
-                {profile.id}
-              </Text>
-            </View>
           </View>
 
-          {/* Edit/Save Button */}
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.primary }]}
-            onPress={editMode ? saveProfile : () => setEditMode(true)}
-          >
-            <Feather 
-              name={editMode ? 'save' : 'edit'} 
-              size={18} 
-              color="white" 
-            />
-            <Text style={styles.actionButtonText}>
-              {editMode ? 'Save Changes' : 'Edit Profile'}
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
+        
+
+        {/* Header Menu */}
+        <HeaderMenu
+          visible={showHeaderMenu}
+          onClose={() => setShowHeaderMenu(false)}
+          onAction={handleMenuAction}
+          showAuthOptions={true}
+        />
       </SafeAreaView>
     </PageBackground>
   );
@@ -344,12 +457,52 @@ const styles = StyleSheet.create({
     paddingTop: 120,
     paddingBottom: 40,
   },
-  profileHeader: {
+  profileBanner: {
+    width: '100%',
+    marginBottom: spacing[4],
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    position: 'relative',
+    overflow: 'visible',
+    zIndex: 1,
+  },
+  bannerImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing[2],
+  },
+  bannerOverlayText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  profileHeader: {
+    alignItems: 'flex-start',
     paddingVertical: spacing[6],
+    paddingHorizontal: spacing[5],
+    paddingBottom: 60,
+    minHeight: 160,
   },
   profileImageContainer: {
-    position: 'relative',
+    position: 'absolute',
+    bottom: -60,
+    left: spacing[5],
+    zIndex: 100,
+    elevation: 10,
   },
   profileImage: {
     width: 120,
@@ -372,6 +525,7 @@ const styles = StyleSheet.create({
   },
   fieldsContainer: {
     paddingHorizontal: spacing[5],
+    paddingTop: 80,
   },
   fieldContainer: {
     marginBottom: spacing[5],
@@ -396,20 +550,9 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: spacing[5],
-    marginTop: spacing[6],
-    paddingVertical: spacing[4],
-    borderRadius: 12,
-    gap: spacing[2],
-  },
-  actionButtonText: {
-    color: 'white',
-    ...typography.textStyles.bodyLarge,
-    fontWeight: '600',
+  // Header Icon
+  headerIcon: {
+    padding: spacing[2],
   },
   
   // Loading and error states
@@ -448,16 +591,32 @@ const styles = StyleSheet.create({
   
   // Profile picture delete button
   deleteImageButton: {
-    flexDirection: 'row',
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing[3],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: 8,
-    gap: spacing[1],
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  
+  // Banner delete button
+  deleteBannerButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
   },
   deleteImageText: {
-    color: 'white',
     fontSize: 14,
     fontWeight: '500',
   },
