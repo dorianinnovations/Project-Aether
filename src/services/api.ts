@@ -289,7 +289,7 @@ export const AuthAPI = {
   },
 
   async refreshToken(): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/refresh');
+    const response = await api.post<AuthResponse>('/refresh');
     await TokenManager.setToken(response.data.token);
     return response.data;
   },
@@ -336,7 +336,7 @@ export const ChatAPI = {
   },
 
   async sendAdaptiveMessage(message: string, stream: boolean = true): Promise<ChatResponse> {
-    const response = await api.post<ChatResponse>('/personalized-ai/contextual-chat', {
+    const response = await api.post<ChatResponse>('/personalizedAI/contextual-chat', {
       message,
       stream,
     });
@@ -409,55 +409,66 @@ export const UserAPI = {
 // Analytics API - Enhanced with Real Cognitive Engine
 export const AnalyticsAPI = {
   async getPersonalInsights(): Promise<any> {
-    const response = await api.get('/personal-insights/growth-summary');
+    const response = await api.post('/analyticsLLM/insights', {
+      analysisType: 'personal_growth'
+    });
     return response.data;
   },
 
   async getEmotionalAnalytics(): Promise<any> {
-    const response = await api.get('/emotional-analytics/weekly-report');
+    const response = await api.post('/analyticsLLM/weekly-digest', {
+      focusArea: 'emotional'
+    });
     return response.data;
   },
 
   async getUBPMContext(): Promise<{success: boolean; data: UBPMContext}> {
-    const response = await api.get('/test-ubpm/context');
+    const response = await api.get('/ubpm/context');
     return response.data;
   },
 
   async getCollectiveSnapshot(): Promise<{success: boolean; snapshot: CollectiveSnapshot}> {
-    const response = await api.get('/collective-snapshots/latest');
+    const response = await api.get('/analyticsEcosystem/ecosystem');
     return response.data;
   },
 
   async getSystemMetrics(): Promise<{data: SystemMetrics}> {
-    const response = await api.get('/analytics/system');
+    const response = await api.get('/analyticsLLM/status');
     return response.data;
   },
 
   // NEW: Get real user behavior profile from MongoDB
   async getUserBehaviorProfile(): Promise<any> {
-    const response = await api.get('/user/behavior-profile');
+    const response = await api.get('/ubpm/context');
     return response.data;
   },
 
   // NEW: Get collective emotions data (the real chart data)
   async getCollectiveEmotions(): Promise<any> {
-    const response = await api.get('/collective-data/emotions');
+    const response = await api.get('/analyticsEcosystem/ecosystem');
     return response.data;
   },
 
   // GOD-TIER: Real UBPM Cognitive Engine APIs
   async getRealUBPMAnalysis(): Promise<any> {
-    const response = await api.get('/ubpm/analysis');
+    const response = await api.post('/analyticsLLM/patterns', {
+      analysisType: 'behavioral'
+    });
     return response.data;
   },
 
   async analyzeMessage(message: string): Promise<any> {
-    const response = await api.post('/ubpm/analyze-message', { message });
+    const response = await api.post('/analyticsLLM/insights', { 
+      message,
+      analysisType: 'message_analysis'
+    });
     return response.data;
   },
 
   async getCognitivePatterns(): Promise<any> {
-    const response = await api.get('/ubpm/cognitive-patterns');
+    const response = await api.post('/analyticsLLM/patterns', {
+      analysisType: 'cognitive'
+    });
     return response.data;
   },
 };
@@ -465,7 +476,7 @@ export const AnalyticsAPI = {
 // Connections API
 export const ConnectionsAPI = {
   async findConnections(connectionType: string = 'all'): Promise<any> {
-    const response = await api.post('/personalized-ai/find-connections', {
+    const response = await api.post('/personalizedAI/find-connections', {
       connectionType,
       limit: 20,
     });
@@ -473,19 +484,19 @@ export const ConnectionsAPI = {
   },
 
   async analyzeCompatibility(targetUserId: string): Promise<any> {
-    const response = await api.post('/personalized-ai/connection-insights', {
+    const response = await api.post('/personalizedAI/connection-insights', {
       targetUserId,
     });
     return response.data;
   },
 
   async getEvents(): Promise<any> {
-    const response = await api.get('/cloud/events');
+    const response = await api.get('/personalizedAI/historical-insights');
     return response.data;
   },
 
   async findEventMatches(filters: any): Promise<any> {
-    const response = await api.post('/cloud/events/match', filters);
+    const response = await api.post('/analyticsLLM/recommendations', filters);
     return response.data;
   },
 };
