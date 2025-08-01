@@ -34,8 +34,9 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
         }
         break;
       case 'dashboard':
-        if (screenName !== 'dashboard') {
-          (navigation as any).navigate('Dashboard');
+      case 'engine':
+        if (screenName !== 'engine' && screenName !== 'dashboard') {
+          (navigation as any).navigate('Engine');
         }
         break;
       case 'social':

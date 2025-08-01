@@ -48,7 +48,7 @@ const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
   },
   { 
     icon: <Feather name="bar-chart-2" size={16} color={getIconColor('dashboard', theme)} />, 
-    label: 'Dashboard', 
+    label: 'Engine', 
     key: 'dashboard', 
     requiresAuth: false 
   },

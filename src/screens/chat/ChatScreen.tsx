@@ -48,6 +48,7 @@ import { getGlassmorphicStyle } from '../../design-system/tokens/glassmorphism';
 import Icon from '../../design-system/components/atoms/Icon';
 import { useHeaderMenu } from '../../design-system/hooks';
 
+
 // Services
 import { ChatAPI, ApiUtils, ConversationAPI, AuthAPI, TokenManager } from '../../services/api';
 
@@ -89,8 +90,8 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   
   // Enhanced UI state
   const [showSignOutModal, setShowSignOutModal] = useState(false);
@@ -116,10 +117,9 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     onSignOut: () => setShowSignOutModal(true)
   });
 
-  // Using colors from theme context instead of getThemeColors
-  const flatListRef = useRef<any>(null);
+  // Simple refs for basic functionality
+  const flatListRef = useRef<FlatList>(null);
   const headerAnim = useRef(new Animated.Value(1)).current;
-  const scrollOffsetY = useRef(0);
 
   // Smart suggestions based on context
   const [suggestions] = useState([
@@ -217,14 +217,52 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     };
   }, [greetingAnimY, greetingOpacity]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // RESPONSIVE: Enhanced scroll logic for fast streaming
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastScrollTimeRef = useRef(0);
+  
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      const lastMessage = messages[messages.length - 1];
+      const streaming = lastMessage.variant === 'streaming';
+      
+      setIsStreaming(streaming);
+      
+      // Enhanced scroll logic for fast streaming
+      if (streaming) {
+        const now = Date.now();
+        const timeSinceLastScroll = now - lastScrollTimeRef.current;
+        
+        // Clear any pending scroll
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+        
+        // Immediate scroll for first word or if enough time has passed
+        if (timeSinceLastScroll > 100) {
+          flatListRef.current?.scrollToEnd({ animated: true });
+          lastScrollTimeRef.current = now;
+        } else {
+          // Throttled scroll for rapid updates - shorter delay for responsiveness
+          scrollTimeoutRef.current = setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+            lastScrollTimeRef.current = Date.now();
+          }, 15); // Much more responsive - matches streaming speed
+        }
+      }
+    } else {
+      setIsStreaming(false);
     }
   }, [messages]);
+  
+  // Cleanup scroll timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   
   // Settings modal state
@@ -253,7 +291,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       timestamp: new Date().toISOString(),
     };
 
-    // Add user message
+    // Add user message - scroll will be handled by useEffect
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsLoading(true);
@@ -359,9 +397,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         ];
         
         setMessages(demoMessages);
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        // No auto-scroll for demos
         return;
       }
       
@@ -392,11 +428,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       
       // Replace current messages with loaded conversation
       setMessages(convertedMessages);
-      
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      // No auto-scroll for loaded conversations
       
     } catch (error: any) {
       console.error('Failed to load conversation:', error);
@@ -461,10 +493,9 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     }
   };
 
-  // Handle scroll to bottom
+  // Handle scroll to bottom button press
   const handleScrollToBottom = () => {
     flatListRef.current?.scrollToEnd({ animated: true });
-    setShowScrollToBottom(false);
   };
 
   // Enhanced handlers for new components
@@ -650,23 +681,19 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={15}
+          updateCellsBatchingPeriod={50}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: headerAnim } } }],
             { 
               useNativeDriver: false,
               listener: (event: any) => {
-                const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-                const offsetY = contentOffset.y;
-                
-                // Update header animation
+                // Handle header animation
+                const offsetY = event.nativeEvent.contentOffset.y;
                 headerAnim.setValue(offsetY > 50 ? 0.8 : 1);
-                
-                // Track scroll position for scroll-to-bottom button
-                scrollOffsetY.current = offsetY;
-                
-                // Show scroll-to-bottom button if not near bottom (150px threshold)
-                const isNearBottom = offsetY + layoutMeasurement.height >= contentSize.height - 150;
-                setShowScrollToBottom(!isNearBottom && messages.length > 3);
               }
             }
           )}
@@ -674,7 +701,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         />
         
         <ScrollToBottomButton
-          visible={showScrollToBottom}
+          visible={false}
           onPress={handleScrollToBottom}
           theme={theme}
         />

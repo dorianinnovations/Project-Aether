@@ -45,6 +45,7 @@ import { typography } from '../design-system/tokens/typography';
 import { spacing } from '../design-system/tokens/spacing';
 import { getGlassmorphicStyle } from '../design-system/tokens/glassmorphism';
 import Icon from '../design-system/components/atoms/Icon';
+import ConversationSkeleton from '../design-system/components/atoms/ConversationSkeleton';
 
 // Services
 import { ConversationAPI } from '../services/api';
@@ -192,82 +193,82 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   };
 
   const showDrawer = () => {
-    // Silk-smooth cube-into-cube-slot level animations
+    // Smooth door-like slide with refined timing and easing
     translateX.value = withTiming(0, {
-      duration: 320,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1.0), // Perfect ease-out curve
+      duration: 450, // Slower for more door-like feel
+      easing: Easing.bezier(0.215, 0.61, 0.355, 1), // Smooth ease-out cubic-bezier
     }, () => {
       runOnJS(setIsAnimating)(false);
       runOnJS(setAllowInteraction)(true);
     });
     
-    // Subtle scale animation for depth
+    // Subtle scale animation for depth - refined timing
     drawerScale.value = withTiming(1, {
-      duration: 380,
-      easing: Easing.bezier(0.34, 1.56, 0.64, 1), // Subtle bounce
+      duration: 500, // Slightly longer for smoothness
+      easing: Easing.bezier(0.23, 1, 0.32, 1), // Smooth ease-out without bounce
     });
     
     drawerOpacity.value = withTiming(1, {
-      duration: 250,
-      easing: Easing.out(Easing.quad),
+      duration: 350, // Longer fade-in
+      easing: Easing.bezier(0.25, 0.46, 0.45, 0.94), // Smooth cubic-bezier
     });
     
-    // Reduce shadow for subtle depth perception
+    // Gradual shadow buildup for depth perception
     shadowOpacity.value = withTiming(0.15, {
-      duration: 320,
-      easing: Easing.out(Easing.quad),
+      duration: 450, // Match main animation
+      easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
     });
     
     shadowRadius.value = withTiming(12, {
-      duration: 380,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      duration: 500, // Slightly longer
+      easing: Easing.bezier(0.215, 0.61, 0.355, 1),
     });
     
     overlayOpacity.value = withTiming(0.6, {
-      duration: 280,
-      easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+      duration: 400, // Longer overlay fade
+      easing: Easing.bezier(0.215, 0.61, 0.355, 1),
     });
     
     // Allow overlay interaction smoothly
     setTimeout(() => {
       setAllowInteraction(true);
-    }, 100);
+    }, 150); // Slightly longer delay
   };
 
   const hideDrawer = () => {
-    // Smooth slide-away with anticipation
+    // Smooth door-like close with refined timing - feels like a heavy sliding door
     translateX.value = withTiming(-DRAWER_WIDTH, {
-      duration: 250,
-      easing: Easing.bezier(0.55, 0.06, 0.68, 0.19), // Anticipatory ease-in
+      duration: 380, // Slower, more deliberate close
+      easing: Easing.bezier(0.42, 0, 0.58, 1), // Smooth ease-in-out for door-like motion
     }, () => {
       runOnJS(setIsAnimating)(false);
       runOnJS(setAllowInteraction)(true);
     });
     
     drawerScale.value = withTiming(0.95, {
-      duration: 220,
-      easing: Easing.in(Easing.quad),
+      duration: 350, // Slower scale transition
+      easing: Easing.bezier(0.42, 0, 0.58, 1), // Consistent easing
     });
     
     drawerOpacity.value = withTiming(0, {
-      duration: 180,
-      easing: Easing.in(Easing.quad),
+      duration: 300, // Longer fade-out
+      easing: Easing.bezier(0.42, 0, 0.58, 1), // Smooth fade
     });
     
-    // Reduce shadow smoothly
+    // Gradual shadow reduction - matches the door closing feel
     shadowOpacity.value = withTiming(0, {
-      duration: 150,
-      easing: Easing.in(Easing.quad),
+      duration: 250, // Longer shadow fade
+      easing: Easing.bezier(0.42, 0, 0.58, 1),
     });
     
     shadowRadius.value = withTiming(5, {
-      duration: 200,
-      easing: Easing.in(Easing.quad),
+      duration: 320, // Longer radius transition
+      easing: Easing.bezier(0.42, 0, 0.58, 1),
     });
     
     overlayOpacity.value = withTiming(0, {
-      duration: 200,
-      easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+      duration: 320, // Longer overlay fade
+      easing: Easing.bezier(0.42, 0, 0.58, 1), // Consistent smooth easing
     }, (finished) => {
       if (finished) {
         runOnJS(onClose)();
@@ -488,43 +489,43 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
       const shouldOpen = currentPosition > -DRAWER_WIDTH / 2 || velocityX > 500;
       
       if (shouldOpen) {
-        // Open the drawer with perfect spring physics
+        // Open the drawer with refined spring physics - more door-like
         translateX.value = withSpring(0, {
-          damping: 20,
-          stiffness: 90,
-          mass: 1,
+          damping: 28, // Higher damping for smoother, less bouncy motion
+          stiffness: 75, // Lower stiffness for more controlled movement
+          mass: 1.2, // Slightly heavier feel
         });
         
         drawerScale.value = withSpring(1, {
-          damping: 18,
-          stiffness: 100,
-          mass: 0.9,
+          damping: 25, // Consistent damping
+          stiffness: 80, // Slightly lower stiffness
+          mass: 1.0,
         });
         
         overlayOpacity.value = withTiming(0.6, { 
-          duration: 280,
-          easing: Easing.out(Easing.quad),
+          duration: 350, // Longer duration
+          easing: Easing.bezier(0.215, 0.61, 0.355, 1), // Smooth cubic-bezier
         });
         
         // Enhanced haptic feedback for opening
         runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
       } else {
-        // Close the drawer with satisfying snap-back
+        // Close the drawer with smooth, controlled motion - like a heavy sliding door
         translateX.value = withSpring(-DRAWER_WIDTH, {
-          damping: 22,
-          stiffness: 85,
-          mass: 1.1,
+          damping: 30, // Higher damping for controlled close
+          stiffness: 70, // Lower stiffness for smoother motion
+          mass: 1.3, // Heavier feel for closing
         });
         
         drawerScale.value = withSpring(0.95, {
-          damping: 20,
-          stiffness: 90,
-          mass: 1,
+          damping: 28, // Consistent damping
+          stiffness: 75, // Consistent stiffness
+          mass: 1.2,
         });
         
         overlayOpacity.value = withTiming(0, { 
-          duration: 250,
-          easing: Easing.in(Easing.quad),
+          duration: 320, // Longer duration
+          easing: Easing.bezier(0.42, 0, 0.58, 1), // Smooth ease-in-out
         }, (finished) => {
           if (finished) {
             runOnJS(onClose)();
@@ -872,11 +873,12 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const renderPageContent = (pageId: string) => {
     if (isLoading) {
       return (
-        <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color={themeColors.primary} />
-          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>
-            Loading conversations...
-          </Text>
+        <View style={styles.conversationsList}>
+          <View style={styles.conversationsContent}>
+            {[...Array(6)].map((_, index) => (
+              <ConversationSkeleton key={index} />
+            ))}
+          </View>
         </View>
       );
     }

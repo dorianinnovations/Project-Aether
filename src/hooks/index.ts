@@ -9,3 +9,4 @@
 export { useTheme } from './useTheme';
 export { useSettings } from './useSettings';
 export { useKeyboard } from './useKeyboard';
+export { useChatScrollManager } from './useChatScrollManager';

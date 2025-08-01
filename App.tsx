@@ -22,7 +22,7 @@ import OnboardingScreen from './src/screens/onboarding/OnboardingScreen';
 import SignInScreen from './src/screens/auth/SignInScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
 import ChatScreen from './src/screens/chat/ChatScreen';
-import DashboardScreen from './src/screens/insights/InsightsScreen';
+import EngineScreen from './src/screens/engine/EngineScreen';
 import SocialScreen from './src/screens/connections/ConnectionsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
@@ -59,7 +59,7 @@ export type AuthStackParamList = {
 
 export type MainStackParamList = {
   Chat: undefined;
-  Dashboard: undefined;
+  Engine: undefined;
   Social: undefined;
   Profile: undefined;
 };
@@ -102,7 +102,7 @@ const MainStackNavigator = () => {
       }}
     >
       <MainStack.Screen name="Chat" component={ChatScreen} />
-      <MainStack.Screen name="Dashboard" component={DashboardScreen} />
+      <MainStack.Screen name="Engine" component={EngineScreen} />
       <MainStack.Screen name="Social" component={SocialScreen} />
       <MainStack.Screen name="Profile" component={ProfileScreen} />
     </MainStack.Navigator>

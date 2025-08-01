@@ -25,6 +25,7 @@ import { spacing, borderRadius } from '../../tokens/spacing';
 import { getNeumorphicStyle } from '../../tokens/shadows';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
 import { ToolCall } from '../../../types';
+import BasicMarkdown from '../atoms/BasicMarkdown';
 
 const { width } = Dimensions.get('window');
 
@@ -84,13 +85,13 @@ interface AnimatedMessageBubbleProps {
   colorfulBubblesEnabled?: boolean;
 }
 
-// Simple streaming text - no animations, no markdown
+// Streaming text with markdown support including lists
 const StreamingText: React.FC<{
   text: string;
   theme: 'light' | 'dark';
   isStreaming?: boolean;
 }> = ({ text, theme, isStreaming = false }) => {
-  const textStyle = {
+  const baseTextStyle = {
     fontSize: 17,
     lineHeight: 26,
     letterSpacing: -0.2,
@@ -101,10 +102,9 @@ const StreamingText: React.FC<{
 
   return (
     <View>
-      <Text style={textStyle}>
-        {text}
-        {isStreaming && '|'}
-      </Text>
+      <BasicMarkdown theme={theme} style={baseTextStyle}>
+        {`${text}${isStreaming ? '|' : ''}`}
+      </BasicMarkdown>
     </View>
   );
 };
