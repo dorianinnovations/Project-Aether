@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
 // Design System
 import { designTokens, getThemeColors, getBorderStyle, getIconColor } from '../../design-system/tokens/colors';
@@ -65,11 +66,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
+  // New settings
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+  const [largeText, setLargeText] = useState(false);
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  const [showTimestamps, setShowTimestamps] = useState(true);
+  const [autoLock, setAutoLock] = useState(true);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeSubDrawer, setActiveSubDrawer] = useState<string | null>(null);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   
   // Animation refs
   const subDrawerAnim = useRef(new Animated.Value(0)).current;
@@ -128,6 +137,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       items: [
         { key: 'theme', label: 'Dark Mode', value: theme === 'dark', type: 'switch' },
         { key: 'animations', label: 'Animations', value: animationsEnabled, type: 'switch' },
+        { key: 'reduceMotion', label: 'Reduce Motion', value: reduceMotion, type: 'switch' },
+        { key: 'showTimestamps', label: 'Show Timestamps', value: showTimestamps, type: 'switch' },
+      ]
+    },
+    accessibility: {
+      title: 'Accessibility',
+      icon: 'eye',
+      description: 'Visual and interaction aids',
+      items: [
+        { key: 'highContrast', label: 'High Contrast', value: highContrast, type: 'switch' },
+        { key: 'largeText', label: 'Large Text', value: largeText, type: 'switch' },
+        { key: 'reduceMotion', label: 'Reduce Motion', value: reduceMotion, type: 'switch' },
       ]
     },
     notifications: {
@@ -140,6 +161,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         { key: 'haptics', label: 'Haptic Feedback', value: hapticsEnabled, type: 'switch' },
       ]
     },
+    display: {
+      title: 'Display',
+      icon: 'monitor',
+      description: 'Screen and visual settings',
+      items: [
+        { key: 'keepScreenOn', label: 'Keep Screen On', value: keepScreenOn, type: 'switch' },
+        { key: 'showTimestamps', label: 'Show Timestamps', value: showTimestamps, type: 'switch' },
+      ]
+    },
     privacy: {
       title: 'Privacy & Data',
       icon: 'shield',
@@ -147,6 +177,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       items: [
         { key: 'analytics', label: 'Analytics', value: analyticsEnabled, type: 'switch' },
         { key: 'autoSave', label: 'Auto-Save Chats', value: autoSaveEnabled, type: 'switch' },
+        { key: 'autoLock', label: 'Auto-Lock', value: autoLock, type: 'switch' },
         { key: 'exportData', label: 'Export Data', type: 'action' },
         { key: 'clearData', label: 'Clear All Data', type: 'action', destructive: true },
       ]
@@ -266,6 +297,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setAutoSaveEnabled(settings.autoSaveEnabled);
       setSoundEnabled(settings.soundEnabled);
       setHapticsEnabled(settings.hapticsEnabled);
+      // New settings
+      setReduceMotion(settings.reduceMotion);
+      setHighContrast(settings.highContrast);
+      setLargeText(settings.largeText);
+      setKeepScreenOn(settings.keepScreenOn);
+      setShowTimestamps(settings.showTimestamps);
+      setAutoLock(settings.autoLock);
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -363,6 +401,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         case 'haptics':
           setHapticsEnabled(value);
           await SettingsStorage.setSetting('hapticsEnabled', value);
+          break;
+        // New settings
+        case 'reduceMotion':
+          setReduceMotion(value);
+          await SettingsStorage.setSetting('reduceMotion', value);
+          break;
+        case 'highContrast':
+          setHighContrast(value);
+          await SettingsStorage.setSetting('highContrast', value);
+          break;
+        case 'largeText':
+          setLargeText(value);
+          await SettingsStorage.setSetting('largeText', value);
+          break;
+        case 'keepScreenOn':
+          setKeepScreenOn(value);
+          await SettingsStorage.setSetting('keepScreenOn', value);
+          break;
+        case 'showTimestamps':
+          setShowTimestamps(value);
+          await SettingsStorage.setSetting('showTimestamps', value);
+          break;
+        case 'autoLock':
+          setAutoLock(value);
+          await SettingsStorage.setSetting('autoLock', value);
           break;
       }
     } catch (error) {
@@ -735,14 +798,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 }]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // TODO: Navigate to about screen
+                  setShowAboutModal(true);
                 }}
                 activeOpacity={0.8}
               >
                 <View style={styles.iconContainer}>
                   <Feather name="info" size={16} color={getSettingsIconColor(11)} />
                 </View>
-                <Text style={[styles.quickActionText, { color: colors.text }]}>About Numina</Text>
+                <View style={styles.aboutQuickAction}>
+                  <Text style={[styles.quickActionText, { color: colors.text }]}>About Numina</Text>
+                  <Text style={[styles.versionText, { color: colors.textMuted }]}>
+                    v{Constants.expoConfig?.version || '1.0.0'}
+                  </Text>
+                </View>
               </TouchableOpacity>
             </Animated.View>
           </ScrollView>
@@ -772,6 +840,54 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Sub-drawer */}
         {renderSubDrawer()}
       </View>
+
+      {/* About Modal */}
+      <Modal
+        visible={showAboutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAboutModal(false)}
+      >
+        <View style={styles.aboutModalBackdrop}>
+          <TouchableOpacity 
+            style={styles.aboutModalBackdropTouchable}
+            onPress={() => setShowAboutModal(false)}
+            activeOpacity={1}
+          />
+          
+          <View style={[
+            styles.aboutModalContainer,
+            { 
+              backgroundColor: theme === 'dark' ? '#1a1a1a' : colors.surface,
+              borderColor: colors.borders.default,
+            }
+          ]}>
+            {/* Close button */}
+            <TouchableOpacity
+              style={styles.aboutCloseButton}
+              onPress={() => setShowAboutModal(false)}
+            >
+              <Feather name="x" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            {/* Content */}
+            <View style={styles.aboutContent}>
+              <Text style={[styles.aboutTitle, { color: colors.text }]}>
+                About Numina
+              </Text>
+              <Text style={[styles.aboutVersion, { color: colors.textMuted }]}>
+                Version {Constants.expoConfig?.version || '1.0.0'}
+              </Text>
+              <Text style={[styles.aboutPlatform, { color: colors.textMuted }]}>
+                {Constants.platform?.ios ? 'iOS' : 'Android'} Platform
+              </Text>
+              <Text style={[styles.aboutCredits, { color: colors.textMuted }]}>
+                By Dorian Innovations
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Sign Out Modal */}
       <SignOutModal
@@ -1022,6 +1138,76 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     letterSpacing: -0.1,
+  },
+  aboutQuickAction: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  versionText: {
+    fontFamily: typography.fonts.body,
+    fontSize: 13,
+    fontWeight: '400',
+    letterSpacing: -0.1,
+  },
+  // About Modal
+  aboutModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aboutModalBackdropTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  aboutModalContainer: {
+    width: 240,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: spacing[4],
+    paddingTop: spacing[3],
+    position: 'relative',
+  },
+  aboutCloseButton: {
+    position: 'absolute',
+    top: spacing[2],
+    right: spacing[2],
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  aboutContent: {
+    alignItems: 'flex-start',
+  },
+  aboutTitle: {
+    fontFamily: typography.fonts.headingSemiBold,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: spacing[2],
+  },
+  aboutVersion: {
+    fontFamily: typography.fonts.body,
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  aboutPlatform: {
+    fontFamily: typography.fonts.body,
+    fontSize: 13,
+    marginBottom: spacing[3],
+  },
+  aboutCredits: {
+    fontFamily: typography.fonts.body,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });
 

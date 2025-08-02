@@ -39,52 +39,16 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
   const [isStreaming, setIsStreaming] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
-  // Enhanced scroll logic for fast streaming
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastScrollTimeRef = useRef(0);
-
+  // Track streaming state without legacy scroll logic
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       const streaming = lastMessage.variant === 'streaming';
-      
       setIsStreaming(streaming);
-      
-      // Enhanced scroll logic for fast streaming
-      if (streaming) {
-        const now = Date.now();
-        const timeSinceLastScroll = now - lastScrollTimeRef.current;
-        
-        // Clear any pending scroll
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-        }
-        
-        // Immediate scroll for first word or if enough time has passed
-        if (timeSinceLastScroll > 100) {
-          flatListRef.current?.scrollToEnd({ animated: true });
-          lastScrollTimeRef.current = now;
-        } else {
-          // Throttled scroll for rapid updates - shorter delay for responsiveness
-          scrollTimeoutRef.current = setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-            lastScrollTimeRef.current = Date.now();
-          }, 15); // Much more responsive - matches streaming speed
-        }
-      }
     } else {
       setIsStreaming(false);
     }
   }, [messages]);
-
-  // Cleanup scroll timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleSend = async (inputText: string, attachments: any[] = []) => {
     // Allow sending if there's text OR attachments
@@ -127,10 +91,18 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
       // Start streaming with word animation
       let accumulatedText = '';
       let wordCount = 0;
+      let messageMetadata: any = undefined;
       
       for await (const chunk of ChatAPI.streamMessageWords(messageText, '/ai/adaptive-chat', attachments)) {
+        // Check if chunk is metadata object
+        if (typeof chunk === 'object' && chunk !== null && 'metadata' in chunk) {
+          messageMetadata = (chunk as any).metadata;
+          continue;
+        }
+        
         // For word animation, each chunk is a complete word - add with space
-        accumulatedText += (accumulatedText ? ' ' : '') + chunk;
+        const word = typeof chunk === 'string' ? chunk : (chunk as any).text;
+        accumulatedText += (accumulatedText ? ' ' : '') + word;
         wordCount++;
         
         // Update the streaming message while keeping streaming variant
@@ -141,18 +113,37 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
         ));
       }
       
-      // Mark as complete
+      // Mark as complete with metadata if available
       setMessages(prev => prev.map(msg => 
         msg.id === streamingMessage.id 
-          ? { ...msg, variant: 'default' }
+          ? { 
+              ...msg, 
+              variant: 'default',
+              metadata: messageMetadata ? {
+                ...msg.metadata,
+                ...messageMetadata,
+                // Convert tool results format if needed
+                toolCalls: messageMetadata.searchResults && messageMetadata.sources ? 
+                  [{
+                    id: 'search-' + Date.now(),
+                    name: 'insane_web_search',
+                    parameters: { query: messageMetadata.query },
+                    result: {
+                      sources: messageMetadata.sources,
+                      query: messageMetadata.query
+                    },
+                    status: 'completed'
+                  }] : messageMetadata.toolCalls
+              } : msg.metadata
+            }
           : msg
       ));
       
-      // Sync haptic with final word's opacity animation completion
-      const finalWordAnimationTime = Math.max(0, (wordCount - 1) * 15) + 80;
+      // Refined haptic timing - trigger earlier for better UX
+      const refinedHapticDelay = Math.min(300, Math.max(100, wordCount * 8)); // More responsive timing
       setTimeout(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }, finalWordAnimationTime);
+      }, refinedHapticDelay);
 
     } catch (error: any) {
       console.error('Chat Error:', error);
@@ -172,12 +163,18 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
     }
   };
 
-  // Handle message actions - instant copy to clipboard
+  // Handle message actions - instant copy to clipboard with improved haptic timing
   const handleMessagePress = async (message: Message) => {
+    // Immediate haptic feedback for better responsiveness
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
     if (message.message && message.message.trim()) {
       try {
         await Clipboard.setStringAsync(message.message);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Success haptic after copy completes
+        setTimeout(() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }, 50);
       } catch (error) {
         console.error('Failed to copy to clipboard:', error);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -185,8 +182,11 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
     }
   };
 
-  // Keep long press for metadata viewing (Numina messages only)
+  // Keep long press for metadata viewing (Numina messages only) with improved haptic timing
   const handleMessageLongPress = (message: Message) => {
+    // Immediate haptic feedback on long press start
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
     if (message.sender === 'numina' && message.metadata) {
       // Show message details
       Alert.alert(

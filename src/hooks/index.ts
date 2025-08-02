@@ -7,6 +7,8 @@
 export { useGreeting } from './useGreeting';
 export { useKeyboardAnimation } from './useKeyboardAnimation';
 export { useMessages } from './useMessages';
+export { useDynamicPrompts } from './useDynamicPrompts';
+export { useNaturalScroll } from './useNaturalScroll';
 
 // Existing hooks
 export { useTheme } from './useTheme';

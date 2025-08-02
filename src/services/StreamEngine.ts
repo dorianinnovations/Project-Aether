@@ -9,6 +9,11 @@ import { TokenManager } from './api';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://server-a7od.onrender.com';
 
+export interface StreamChunk {
+  text: string;
+  metadata?: any;
+}
+
 export class StreamEngine {
   /**
    * React Native compatible streaming that yields complete words for animation
@@ -17,14 +22,15 @@ export class StreamEngine {
     prompt: string,
     endpoint: string = '/ai/adaptive-chat',
     attachments?: any[]
-  ): AsyncGenerator<string, void, unknown> {
+  ): AsyncGenerator<string | StreamChunk, void, unknown> {
     
     // For photo attachments, fall back to non-streaming (as per backend)
     if (attachments && attachments.length > 0) {
       const { ChatAPI } = await import('./api');
       const response = await ChatAPI.sendMessage(prompt, false, attachments);
       // Split response into words for consistent behavior
-      const words = response.content.split(/(\s+)/);
+      const content = response.content || '';
+      const words = content.split(/(\s+)/);
       for (const word of words) {
         if (word.trim()) {
           yield word;
@@ -43,6 +49,7 @@ export class StreamEngine {
     let processedChunks = 0;
     let accumulatedText = '';
     let lastWordBoundary = 0;
+    let currentMetadata: any = null;
     
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url, true);
@@ -75,6 +82,10 @@ export class StreamEngine {
                 const parsed = JSON.parse(data);
                 if (parsed.content) {
                   chunks.push(parsed.content);
+                }
+                // Capture metadata if present
+                if (parsed.metadata) {
+                  currentMetadata = parsed.metadata;
                 }
               } catch (e) {
                 console.warn('Streaming parse error:', e);
@@ -134,6 +145,11 @@ export class StreamEngine {
     const remainingText = accumulatedText.slice(lastWordBoundary).trim();
     if (remainingText) {
       yield remainingText;
+    }
+    
+    // Yield metadata as final chunk if available
+    if (currentMetadata) {
+      yield { text: '', metadata: currentMetadata };
     }
   }
 }

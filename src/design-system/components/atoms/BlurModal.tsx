@@ -223,10 +223,11 @@ export const BlurModal: React.FC<BlurModalProps> = ({
     }
   }, [visible]);
 
-  // Effect to handle visibility changes
+  // Effect to handle visibility changes - use setTimeout to avoid insertion effect warnings
   useEffect(() => {
     if (visible) {
-      showModal();
+      const timer = setTimeout(() => showModal(), 0);
+      return () => clearTimeout(timer);
     } else {
       hideModal();
     }

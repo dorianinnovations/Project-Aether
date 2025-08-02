@@ -346,7 +346,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, route }
                   styles.borderContainer,
                   { 
                     opacity: borderOpacity,
-                    backgroundColor: theme === 'dark' ? 'transparent' : '#FAFAFA',
+                    backgroundColor: theme === 'dark' ? '#1A1A1A' : '#FAFAFA',
                     borderColor: theme === 'dark' ? '#333333' : '#e5e7eb',
                     // Neumorphic bottom-right shadow
                     shadowColor: theme === 'dark' ? '#000000' : '#000000',

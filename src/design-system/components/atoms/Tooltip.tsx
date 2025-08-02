@@ -11,6 +11,7 @@ import {
   Animated,
   ViewStyle,
   TextStyle,
+  Easing,
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 
@@ -61,40 +62,164 @@ const Tooltip: React.FC<TooltipProps> = ({
   const opacity = React.useRef(new Animated.Value(0)).current;
   const translateY = React.useRef(new Animated.Value(-10)).current;
   const panY = React.useRef(new Animated.Value(0)).current;
+  const scale = React.useRef(new Animated.Value(1)).current;
+  const [isPressed, setIsPressed] = React.useState(false);
+  const [isAnimating, setIsAnimating] = React.useState(false);
+  const currentAnimations = React.useRef<Animated.CompositeAnimation[]>([]);
 
   const themeColors = getThemeColors(theme);
   const glassmorphicStyle = getGlassmorphicStyle('card', theme);
 
   // Handle pan gesture for swipe down to dismiss
   const onGestureEvent = Animated.event(
-    [{ nativeEvent: { translationY: panY } }],
-    { useNativeDriver: true }
+    [{ 
+      nativeEvent: { 
+        translationY: panY,
+        translationX: new Animated.Value(0) // Ignore horizontal movement
+      } 
+    }],
+    { 
+      useNativeDriver: true,
+      listener: (event: any) => {
+        // Allow natural movement with gentle resistance for upward swipes
+        const translationY = event.nativeEvent.translationY;
+        
+        if (translationY >= 0) {
+          // Downward movement - allow freely with subtle damping
+          const dampedY = translationY * 0.85;
+          panY.setValue(dampedY);
+        } else {
+          // Upward movement - add gentle resistance that gets stronger
+          const resistance = Math.abs(translationY) * 0.3;
+          const dampedY = -resistance;
+          panY.setValue(dampedY);
+        }
+      }
+    }
   );
+
+  // Stop all current animations to prevent conflicts
+  const stopAllAnimations = () => {
+    currentAnimations.current.forEach(anim => anim.stop());
+    currentAnimations.current = [];
+  };
 
   const onHandlerStateChange = (event: any) => {
     if (event.nativeEvent.oldState === State.ACTIVE) {
       const { translationY, velocityY } = event.nativeEvent;
       
-      // Dismiss if swiped down enough (threshold: 50px) or with enough velocity
-      if (translationY > 50 || velocityY > 800) {
-        // Fade out and dismiss
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start(() => {
-          panY.setValue(0);
-          opacity.setValue(1);
-          onHide?.();
+      // Prevent conflicting animations
+      if (isAnimating) {
+        stopAllAnimations();
+      }
+      
+      // Check if it's a tap (minimal movement) or a swipe
+      const isTap = Math.abs(translationY) < 8;
+      
+      if (isTap) {
+        // Tap to change appearance - make less transparent and narrower, then restore
+        setIsPressed(true);
+        setIsAnimating(true);
+        
+        const tapInAnimation = Animated.parallel([
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 120,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scale, {
+            toValue: 0.82,
+            duration: 120,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]);
+        
+        currentAnimations.current.push(tapInAnimation);
+        tapInAnimation.start(() => {
+          // Immediately restore to normal state after tap feedback
+          const tapOutAnimation = Animated.parallel([
+            Animated.timing(opacity, {
+              toValue: 0.9,
+              duration: 150,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(scale, {
+              toValue: 1,
+              duration: 150,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]);
+          
+          currentAnimations.current.push(tapOutAnimation);
+          tapOutAnimation.start(() => {
+            setIsPressed(false);
+            setIsAnimating(false);
+          });
         });
+        
       } else {
-        // Spring back to original position
-        Animated.spring(panY, {
-          toValue: 0,
-          tension: 100,
-          friction: 8,
-          useNativeDriver: true,
-        }).start();
+        // Reset pressed state immediately for swipes
+        setIsPressed(false);
+        setIsAnimating(true);
+        
+        // Calculate dismiss probability based on distance and velocity
+        const dismissThreshold = 25;
+        const velocityThreshold = 400;
+        
+        // Progressive threshold - easier to dismiss with more distance or velocity
+        const distanceRatio = Math.max(0, translationY) / dismissThreshold;
+        const velocityRatio = Math.max(0, velocityY) / velocityThreshold;
+        const dismissScore = distanceRatio + (velocityRatio * 0.7);
+        
+        if (dismissScore > 0.8) {
+          // Smooth dismiss with natural easing
+          const finalY = Math.min(15, Math.max(8, translationY * 0.3));
+          
+          const dismissAnimation = Animated.parallel([
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: 280,
+              easing: Easing.out(Easing.exp),
+              useNativeDriver: true,
+            }),
+            Animated.timing(panY, {
+              toValue: finalY,
+              duration: 280,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]);
+          
+          currentAnimations.current.push(dismissAnimation);
+          dismissAnimation.start(() => {
+            // Reset all values for next use
+            panY.setValue(0);
+            translateY.setValue(-10);
+            scale.setValue(1);
+            opacity.setValue(0);
+            setIsPressed(false);
+            setIsAnimating(false);
+            onHide?.();
+          });
+        } else {
+          // Natural spring back with improved physics
+          const springAnimation = Animated.spring(panY, {
+            toValue: 0,
+            tension: 180,
+            friction: 12,
+            velocity: -velocityY * 0.1,
+            useNativeDriver: true,
+          });
+          
+          currentAnimations.current.push(springAnimation);
+          springAnimation.start(() => {
+            setIsAnimating(false);
+          });
+        }
       }
     }
   };
@@ -112,34 +237,76 @@ const Tooltip: React.FC<TooltipProps> = ({
 
   // Animate visibility
   React.useEffect(() => {
+    // Stop any ongoing animations when visibility changes
+    stopAllAnimations();
+    
     if (visible) {
-      Animated.parallel([
+      setIsPressed(false);
+      setIsAnimating(true);
+      
+      // Reset pan position when showing
+      panY.setValue(0);
+      
+      const showAnimation = Animated.parallel([
         Animated.timing(opacity, {
+          toValue: 0.9,
+          duration: 250,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 200,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
           toValue: 1,
-          duration: 200,
+          duration: 250,
+          easing: Easing.out(Easing.back(1.1)),
           useNativeDriver: true,
         }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      ]);
+      
+      currentAnimations.current.push(showAnimation);
+      showAnimation.start(() => {
+        setIsAnimating(false);
+      });
     } else {
-      Animated.parallel([
+      setIsAnimating(true);
+      
+      const hideAnimation = Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 150,
+          duration: 180,
+          easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: -10,
-          duration: 150,
+          toValue: -8,
+          duration: 180,
+          easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      
+      currentAnimations.current.push(hideAnimation);
+      hideAnimation.start(() => {
+        // Reset all values when hidden to ensure clean state
+        panY.setValue(0);
+        scale.setValue(1); // Force scale back to 1
+        setIsPressed(false);
+        setIsAnimating(false);
+      });
     }
   }, [visible]);
+
+  // Cleanup animations on unmount
+  React.useEffect(() => {
+    return () => {
+      stopAllAnimations();
+    };
+  }, []);
 
   if (!visible) return null;
 
@@ -151,7 +318,8 @@ const Tooltip: React.FC<TooltipProps> = ({
           opacity,
           transform: [
             { translateY },
-            { translateY: panY }
+            { translateY: panY },
+            { scaleX: scale }
           ],
         },
         style,
@@ -220,6 +388,12 @@ const Tooltip: React.FC<TooltipProps> = ({
     <PanGestureHandler
       onGestureEvent={onGestureEvent}
       onHandlerStateChange={onHandlerStateChange}
+      activeOffsetY={3}
+      failOffsetX={[-25, 25]}
+      shouldCancelWhenOutside={false}
+      minPointers={1}
+      maxPointers={1}
+      avgTouches={true}
     >
       {TooltipContent}
     </PanGestureHandler>
@@ -235,7 +409,7 @@ const styles = StyleSheet.create({
     elevation: 1000,
   },
   tooltip: {
-    paddingHorizontal: spacing[4],
+    paddingHorizontal: spacing[6],
     paddingVertical: spacing[2],
     borderRadius: 20,
     borderWidth: 1,
@@ -263,7 +437,8 @@ const styles = StyleSheet.create({
   rightText: {
     textAlign: 'right',
     flex: 0,
-  },
+  }
+
 });
 
 export default Tooltip;

@@ -18,6 +18,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { FontAwesome5, Feather } from '@expo/vector-icons';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -31,16 +32,10 @@ const { width } = Dimensions.get('window');
 
 // Import the centralized LottieLoader
 import { LottieLoader } from '../atoms';
+import { AttachmentPreview, MessageAttachment as AttachmentType } from './AttachmentPreview';
 
-interface MessageAttachment {
-  id: string;
-  type: 'image' | 'document';
-  name: string;
-  uri: string;
-  size: number;
-  uploadStatus: 'pending' | 'uploaded' | 'error';
-  mimeType?: string;
-}
+// Use the AttachmentType from AttachmentPreview component
+type MessageAttachment = AttachmentType;
 
 interface ChatInputProps {
   value: string;
@@ -62,6 +57,7 @@ interface ChatInputProps {
   colorfulBubblesEnabled?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  onSwipeUp?: () => void;
   onDynamicOptionsPress?: () => void;
 }
 
@@ -84,6 +80,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
   colorfulBubblesEnabled = false,
   onFocus,
   onBlur,
+  onSwipeUp,
   onDynamicOptionsPress,
 }) => {
   const themeColors = getThemeColors(theme);
@@ -99,6 +96,19 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const inputFocusAnim = useRef(new Animated.Value(0)).current;
   const attachmentButtonsAnim = useRef(new Animated.Value(0)).current;
+
+  // Swipe up gesture handler
+  const handleSwipeUp = (event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      const { translationY, velocityY } = event.nativeEvent;
+      
+      // Trigger swipe up if swiped up enough (threshold: -30px) or with enough velocity
+      if (translationY < -30 || velocityY < -500) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onSwipeUp?.();
+      }
+    }
+  };
   
   // Computed values
   const isInputEmpty = !value.trim();
@@ -328,13 +338,14 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
 
 
   return (
-    <View style={[
-      styles.container,
-      {
-        zIndex: 1000,
-        elevation: 1000,
-      }
-    ]}>
+    <PanGestureHandler onHandlerStateChange={handleSwipeUp}>
+      <View style={[
+        styles.container,
+        {
+          zIndex: 1000,
+          elevation: 1000,
+        }
+      ]}>
       {/* Character Count */}
       {value.length > maxLength * 0.8 && (
         <View style={styles.characterCount}>
@@ -639,32 +650,14 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
         </Animated.View>
       )}
 
-      {/* Attachment Preview */}
-      {hasAttachments && (
-        <View style={styles.attachmentsList}>
-          {attachments.map((attachment) => (
-            <View key={attachment.id} style={[
-              styles.attachmentItem,
-              getNeumorphicStyle('subtle', theme)
-            ]}>
-              <Text style={[
-                styles.attachmentName,
-                typography.textStyles.bodySmall,
-                { color: themeColors.text }
-              ]}>
-                {attachment.name}
-              </Text>
-              <TouchableOpacity
-                onPress={() => handleRemoveAttachment(attachment.id)}
-                style={styles.removeAttachmentButton}
-              >
-                <FontAwesome5 name="times" size={12} color={themeColors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
+      {/* Modern Attachment Preview */}
+      <AttachmentPreview
+        attachments={attachments}
+        onRemoveAttachment={handleRemoveAttachment}
+        theme={theme}
+      />
     </View>
+    </PanGestureHandler>
   );
 };
 
@@ -809,24 +802,6 @@ const styles = StyleSheet.create({
   attachmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-  },
-  attachmentsList: {
-    marginTop: spacing[2],
-    gap: spacing[2],
-  },
-  attachmentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: 8,
-    marginHorizontal: spacing[2],
-  },
-  attachmentName: {
-    flex: 1,
-  },
-  removeAttachmentButton: {
-    padding: spacing[1],
   },
 });
 

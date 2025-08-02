@@ -39,7 +39,28 @@ export interface AuthResponse {
 }
 
 export interface ChatResponse {
-  content: string;
+  success: boolean;
+  data: {
+    response: string;
+    tone?: string;
+    hasMemory?: boolean;
+    hasTools?: boolean;
+    toolsUsed?: number;
+    toolResults?: Array<{
+      tool: string;
+      query?: string;
+      type?: string;
+      success: boolean;
+      data?: any;
+      tier?: string;
+      processingTime?: number;
+    }>;
+    tier?: string;
+    responseTime?: number;
+    cognitiveEngineUsed?: boolean;
+  };
+  // Legacy support for old format
+  content?: string;
   timestamp?: string;
   metadata?: any;
 }
@@ -305,14 +326,16 @@ export const AuthAPI = {
 
 // Chat API
 export const ChatAPI = {
+  // Legacy method kept for compatibility - but streaming is the only supported mode
   async sendMessage(prompt: string, stream: boolean = true, attachments?: any[]): Promise<ChatResponse> {
-    // If we have attachments (photos), use FormData for multipart upload
+    // Note: This is only used for photo fallback in StreamEngine
+    // All regular chat uses streaming via streamMessageWords
+    
     if (attachments && attachments.length > 0) {
       const formData = new FormData();
       formData.append('prompt', prompt);
-      formData.append('stream', stream.toString());
+      formData.append('stream', 'false'); // Force non-streaming for attachments
       
-      // Add photo attachments
       attachments.forEach((attachment, index) => {
         if (attachment.type === 'image') {
           const imageFile = {
@@ -331,16 +354,22 @@ export const ChatAPI = {
         },
       });
       
+      // Normalize response format for photo responses
+      if (response.data.success && response.data.data) {
+        return {
+          ...response.data,
+          content: response.data.data.response,
+          metadata: {
+            toolResults: response.data.data.toolResults,
+            tier: response.data.data.tier,
+            responseTime: response.data.data.responseTime,
+          }
+        };
+      }
       return response.data;
     }
     
-    // Standard text-only message
-    const response = await api.post<ChatResponse>('/ai/adaptive-chat', {
-      prompt,
-      stream,
-    });
-    
-    return response.data;
+    throw new Error('Non-streaming text messages not supported. Use streamMessageWords instead.');
   },
 
   async sendAdaptiveMessage(message: string, stream: boolean = true): Promise<ChatResponse> {
@@ -359,7 +388,7 @@ export const ChatAPI = {
   },
 
   // StreamEngine - Proprietary word-based streaming
-  async *streamMessageWords(prompt: string, endpoint: string = '/ai/adaptive-chat', attachments?: any[]): AsyncGenerator<string, void, unknown> {
+  async *streamMessageWords(prompt: string, endpoint: string = '/ai/adaptive-chat', attachments?: any[]): AsyncGenerator<string | { text: string; metadata?: any }, void, unknown> {
     const { StreamEngine } = await import('./StreamEngine');
     yield* StreamEngine.streamChat(prompt, endpoint, attachments);
   },

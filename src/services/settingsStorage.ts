@@ -19,6 +19,16 @@ const SETTINGS_KEYS = {
   COLORFULBUBBLESENABLED: '@numina_colorful_bubbles',
   LANGUAGE: '@numina_language',
   FONTFAMILY: '@numina_font_family',
+  // Accessibility
+  REDUCEMOTION: '@numina_reduce_motion',
+  HIGHCONTRAST: '@numina_high_contrast',
+  LARGETEXT: '@numina_large_text',
+  // Display
+  KEEPSCREENON: '@numina_keep_screen_on',
+  SHOWTIMESTAMPS: '@numina_show_timestamps',
+  // System
+  AUTOLOCK: '@numina_auto_lock',
+  AUTOLOCKTIMEOUT: '@numina_auto_lock_timeout',
 } as const;
 
 // Default Settings
@@ -35,6 +45,16 @@ export const DEFAULT_SETTINGS = {
   colorfulBubblesEnabled: false,
   language: 'en',
   fontFamily: 'system',
+  // Accessibility
+  reduceMotion: false,
+  highContrast: false,
+  largeText: false,
+  // Display
+  keepScreenOn: false,
+  showTimestamps: true,
+  // System
+  autoLock: true,
+  autoLockTimeout: 300, // 5 minutes in seconds
 };
 
 export type SettingsKey = keyof typeof DEFAULT_SETTINGS;

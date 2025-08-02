@@ -15,13 +15,16 @@ interface BasicMarkdownProps {
 
 const BasicMarkdown: React.FC<BasicMarkdownProps> = ({ children, theme = 'light', style = {} }) => {
   const renderText = () => {
+    // Ensure children is a string
+    const text = typeof children === 'string' ? children : String(children || '');
+    
     // Split by newlines
-    let lines = children.split('\n');
+    let lines = text.split('\n');
     
     // If no newlines, try to split by list patterns but be more careful
     if (lines.length === 1) {
       // Split more carefully to avoid mixing list types
-      lines = children.split(/(?=\n)|(?=- [^0-9])|(?=\d+\.\s[^0-9])/).filter(line => line.trim());
+      lines = text.split(/(?=\n)|(?=- [^0-9])|(?=\d+\.\s[^0-9])/).filter(line => line.trim());
     }
     
     // Clean up lines but preserve list type separation

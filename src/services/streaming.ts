@@ -22,7 +22,7 @@ export class StreamingService {
     if (attachments && attachments.length > 0) {
       const { ChatAPI } = await import('./api');
       const response = await ChatAPI.sendMessage(prompt, false, attachments);
-      yield response.content;
+      yield response.content || '';
       return;
     }
     

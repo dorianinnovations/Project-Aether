@@ -52,6 +52,8 @@ import { useHeaderMenu } from '../../design-system/hooks';
 import { useGreeting } from '../../hooks/useGreeting';
 import { useKeyboardAnimation } from '../../hooks/useKeyboardAnimation';
 import { useMessages } from '../../hooks/useMessages';
+import { useDynamicPrompts } from '../../hooks/useDynamicPrompts';
+import { useNaturalScroll } from '../../hooks/useNaturalScroll';
 
 // Services
 import { AuthAPI } from '../../services/api';
@@ -71,7 +73,7 @@ import { ToolCall } from '../../types';
 
 interface ChatScreenProps {}
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ChatScreen: React.FC<ChatScreenProps> = () => {
   const navigation = useNavigation();
@@ -89,8 +91,50 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     handleMessagePress,
     handleMessageLongPress,
     handleConversationSelect,
-    flatListRef,
+    flatListRef: messagesRef,
   } = useMessages(() => setShowGreeting(false));
+
+  // Natural scroll behavior hook
+  const {
+    flatListRef,
+    handleScroll,
+    scrollToBottom,
+    snapToUserMessage,
+    scrollToBottomOnKeyboard,
+    getScrollState,
+  } = useNaturalScroll({
+    messages,
+    isStreaming,
+    onUserScrollUp: (isScrolledUp) => {
+      // Could update UI to show scroll-to-bottom button when user scrolls up
+    },
+    onKeyboardShow: () => {
+      // Keyboard shown - scrolled to bottom
+    },
+  });
+
+  // Dynamic prompts hook for intelligent contextual options
+  const {
+    prompts: dynamicPrompts,
+    isAnalyzing: isAnalyzingContext,
+    executePrompt,
+    refreshPrompts
+  } = useDynamicPrompts({
+    messages: messages.map(msg => ({
+      id: msg.id,
+      text: msg.message,
+      sender: msg.sender === 'numina' ? 'ai' : msg.sender === 'system' ? 'ai' : msg.sender,
+      timestamp: new Date(msg.timestamp).getTime()
+    })),
+    onPromptExecute: (promptText: string) => {
+      // Execute the hidden prompt directly
+      handleMessageSend(promptText);
+      // Hide the modal after execution
+      hideModalAnimation(modalAnimationRefs, () => setShowDynamicOptionsModal(false));
+    },
+    enabled: true,
+    refreshInterval: 3
+  });
   
   // UI State
   const [inputText, setInputText] = useState('');
@@ -139,6 +183,9 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     await handleMessageSend(inputText, attachments);
     setInputText('');
     setAttachments([]);
+    
+    // Note: Scroll is now handled automatically by useNaturalScroll hook
+    // No manual scroll triggers needed here
   };
 
   // Handle suggestion press
@@ -167,7 +214,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
   // Handle scroll to bottom button press
   const handleScrollToBottom = () => {
-    flatListRef.current?.scrollToEnd({ animated: true });
+    scrollToBottom();
   };
 
   // Enhanced handlers for new components
@@ -212,10 +259,9 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-    // Scroll to bottom when input is focused
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    
+    // Note: Scroll is now handled automatically by keyboard listeners in useNaturalScroll
+    // No manual scroll trigger needed here
   };
 
   const handleInputBlur = () => {
@@ -337,6 +383,9 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
                 // Handle header animation
                 const offsetY = event.nativeEvent.contentOffset.y;
                 headerAnim.setValue(offsetY > 50 ? 0.8 : 1);
+                
+                // Handle natural scroll behavior
+                handleScroll(event);
               }
             }
           )}
@@ -386,11 +435,11 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
                 style={{
                   position: 'relative',
                   top: 30,
-                  width: '85%',
+                  width: '92%',
                 }}
                 tooltipStyle={{
                   borderRadius: 8,
-                  paddingHorizontal: 12,
+                  paddingHorizontal: 16,
                   paddingVertical: 6,
                   width: '100%',
                 }}
@@ -410,10 +459,6 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
               onSend={handleEnhancedSend}
               onVoiceStart={handleVoiceStart}
               onVoiceEnd={handleVoiceEnd}
-              onDynamicOptionsPress={() => {
-                setShowDynamicOptionsModal(true);
-                showModalAnimation(modalAnimationRefs);
-              }}
               isLoading={isLoading}
               theme={theme}
               placeholder="What up?"
@@ -426,6 +471,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
               colorfulBubblesEnabled={settings.colorfulBubblesEnabled}
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
+              onSwipeUp={() => setShowTestTooltip(true)}
             />
           </View>
         </View>
@@ -524,19 +570,80 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
                   color: colors.text,
                 }
               ]}>
-                Dynamic Options
+                Explore Further
               </Text>
               
-              {/* Placeholder for dynamic options that will be context-based */}
+              {/* Dynamic contextual prompts */}
               <View style={styles.optionsContainer}>
-                <Text style={[
-                  styles.placeholderText,
-                  {
-                    color: colors.textSecondary,
-                  }
-                ]}>
-                  Context-based options will appear here
-                </Text>
+                {isAnalyzingContext ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={[
+                      styles.loadingText,
+                      {
+                        color: colors.textSecondary,
+                      }
+                    ]}>
+                      Analyzing conversation...
+                    </Text>
+                  </View>
+                ) : dynamicPrompts.length > 0 ? (
+                  dynamicPrompts.map((prompt, index) => {
+                    // Color coding: red, yellow, green for first 3 options
+                    const dotColors = ['#FF4757', '#FFA502', '#2ED573'];
+                    const dotColor = dotColors[index % 3];
+                    
+                    return (
+                      <TouchableOpacity
+                        key={prompt.id}
+                        style={[
+                          styles.promptOption,
+                          {
+                            backgroundColor: theme === 'dark' 
+                              ? 'rgba(255, 255, 255, 0.05)' 
+                              : 'rgba(0, 0, 0, 0.03)',
+                            borderColor: theme === 'dark' 
+                              ? 'rgba(255, 255, 255, 0.1)' 
+                              : 'rgba(0, 0, 0, 0.08)',
+                          }
+                        ]}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          executePrompt(prompt.id);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.promptHeader}>
+                          <View style={[styles.colorDot, { backgroundColor: dotColor }]} />
+                          <Text style={[
+                            styles.promptText,
+                            {
+                              color: colors.text,
+                            }
+                          ]}>
+                            {prompt.displayText}
+                          </Text>
+                        </View>
+                        <Text style={[
+                          styles.promptCategory,
+                          {
+                            color: colors.textMuted,
+                          }
+                        ]}>
+                          {prompt.archetype}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                ) : (
+                  <Text style={[
+                    styles.placeholderText,
+                    {
+                      color: colors.textSecondary,
+                    }
+                  ]}>
+                    Start a conversation to see contextual options
+                  </Text>
+                )}
               </View>
               
               <TouchableOpacity 
@@ -606,9 +713,10 @@ const styles = StyleSheet.create({
     zIndex: 1, // Ensure messages appear above background but below header
   },
   messagesContent: {
-    paddingTop: Platform.OS === 'ios' ? 100 : 80, // Account for absolute positioned header
-    paddingBottom: 140, // Account for chat input + potential tab bar
-    gap: spacing[2],
+    paddingTop: Platform.OS === 'ios' ? 140 : 120, // Extra clearance for header to prevent hiding
+    paddingBottom: SCREEN_HEIGHT * 0.7, // Industry standard: Ample space for streaming content to flow into
+    gap: spacing[3], // Increased spacing between messages for better readability
+    minHeight: SCREEN_HEIGHT * 1.5, // Ensure enough space for natural scrolling behavior
   },
 
   // Dynamic Options Modal
@@ -630,18 +738,19 @@ const styles = StyleSheet.create({
   },
   modalPositioner: {
     position: 'absolute',
-    bottom: 120, // Position above the chat input area
+    bottom: 110, 
     left: 12,
     right: 12,
   },
   dynamicOptionsModal: {
-    width: '100%', // Match the tooltip width
-    borderRadius: 8, // Match tooltip border radius
+    width: '92%', 
+    alignSelf: 'center', 
+    borderRadius: 8, 
     borderWidth: 1,
-    padding: spacing[3],
+    padding: spacing[2],
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -653,9 +762,46 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     minHeight: 80,
-    justifyContent: 'center',
+    paddingVertical: spacing[1],
+    gap: spacing[1],
+  },
+  loadingContainer: {
+    paddingVertical: spacing[4],
     alignItems: 'center',
+  },
+  loadingText: {
+    ...typography.textStyles.caption,
+    fontStyle: 'italic',
+  },
+  promptOption: {
+    paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: spacing[2],
+  },
+  promptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[1],
+  },
+  colorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing[2],
+  },
+  promptText: {
+    ...typography.textStyles.body,
+    fontWeight: '600',
+    flex: 1,
+  },
+  promptCategory: {
+    ...typography.textStyles.caption,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '500',
+    opacity: 0.7,
   },
   placeholderText: {
     ...typography.textStyles.caption,
