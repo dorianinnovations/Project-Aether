@@ -5,11 +5,19 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StorageCleanup } from '../utils/storageCleanup';
 
 // API Configuration
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://server-a7od.onrender.com';
 const AUTH_TOKEN_KEY = '@numina_auth_token';
-const USER_DATA_KEY = '@numina_user_data';
+
+// User-specific storage keys to prevent cross-account contamination
+const getStorageKeys = (userId?: string) => ({
+  USER_DATA: userId ? `@numina_user_data_${userId}` : '@numina_user_data_temp',
+  CONVERSATIONS: userId ? `@numina_conversations_${userId}` : '@numina_conversations_temp',
+  SETTINGS: userId ? `@numina_settings_${userId}` : '@numina_settings_temp',
+  CACHE: userId ? `@numina_cache_${userId}` : '@numina_cache_temp'
+});
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -160,7 +168,20 @@ export const TokenManager = {
   async removeToken(): Promise<void> {
     try {
       await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-      await AsyncStorage.removeItem(USER_DATA_KEY);
+      // Get current user data to find user ID for cleanup
+      const currentUser = await this.getUserData();
+      const userId = currentUser?.id;
+      
+      // Remove user-specific data if we have a user ID
+      if (userId) {
+        const keys = getStorageKeys(userId);
+        await Promise.all([
+          AsyncStorage.removeItem(keys.USER_DATA),
+          AsyncStorage.removeItem(keys.CONVERSATIONS),
+          AsyncStorage.removeItem(keys.SETTINGS),
+          AsyncStorage.removeItem(keys.CACHE)
+        ]);
+      }
     } catch (error) {
       console.error('Error removing token:', error);
     }
@@ -168,7 +189,18 @@ export const TokenManager = {
 
   async getUserData(): Promise<any> {
     try {
-      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+      // Try to find user-specific storage first
+      const allKeys = await AsyncStorage.getAllKeys();
+      const userDataKey = allKeys.find(key => key.includes('@numina_user_data_') && !key.includes('_temp'));
+      
+      if (userDataKey) {
+        const userData = await AsyncStorage.getItem(userDataKey);
+        return userData ? JSON.parse(userData) : null;
+      }
+      
+      // Fallback to temp storage
+      const tempKeys = getStorageKeys();
+      const userData = await AsyncStorage.getItem(tempKeys.USER_DATA);
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
       console.error('Error getting user data:', error);
@@ -178,7 +210,17 @@ export const TokenManager = {
 
   async setUserData(userData: any): Promise<void> {
     try {
-      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+      const userId = userData?.id;
+      const keys = getStorageKeys(userId);
+      
+      // Store in user-specific location
+      await AsyncStorage.setItem(keys.USER_DATA, JSON.stringify(userData));
+      
+      // Clean up any temp storage
+      if (userId) {
+        const tempKeys = getStorageKeys();
+        await AsyncStorage.removeItem(tempKeys.USER_DATA);
+      }
     } catch (error) {
       console.error('Error setting user data:', error);
     }
@@ -293,9 +335,14 @@ export const AuthAPI = {
       ...(name && { name }),
     });
     
-    // Store token and user data
+    // Store token and user data with cleanup
     await TokenManager.setToken(response.data.token);
     await TokenManager.setUserData(response.data.data.user);
+    
+    // Clean up any contaminated storage for this user
+    if (response.data.data.user?.id) {
+      await StorageCleanup.cleanupUserStorage(response.data.data.user.id);
+    }
     
     return response.data;
   },
@@ -306,9 +353,14 @@ export const AuthAPI = {
       password,
     });
     
-    // Store token and user data
+    // Store token and user data with cleanup
     await TokenManager.setToken(response.data.token);
     await TokenManager.setUserData(response.data.data.user);
+    
+    // Clean up any contaminated storage for this user
+    if (response.data.data.user?.id) {
+      await StorageCleanup.cleanupUserStorage(response.data.data.user.id);
+    }
     
     return response.data;
   },

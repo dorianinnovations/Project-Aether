@@ -9,6 +9,7 @@ export { default as ConnectionCard } from './ConnectionCard';
 export { default as EngineCard } from './EngineCard';
 export { default as InsightChart } from './InsightChart';
 export { default as MetricCard } from './MetricCard';
+export { default as TrendChart } from './TrendChart';
 
 // Enhanced components from numina-mobile
 export { EnhancedChatInput } from './EnhancedChatInput';

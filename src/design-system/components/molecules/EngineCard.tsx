@@ -19,8 +19,15 @@ import { designTokens, getThemeColors } from '../../tokens/colors';
 import { typography } from '../../tokens/typography';
 import { spacing } from '../../tokens/spacing';
 import { createNeumorphicContainer } from '../../tokens/shadows';
+import TrendChart from './TrendChart';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface TrendDataPoint {
+  hour: number;
+  value: number;
+  majorDetail: string;
+}
 
 interface EngineCardProps {
   id: string;
@@ -32,6 +39,8 @@ interface EngineCardProps {
   live?: boolean;
   theme?: 'light' | 'dark';
   onPress?: () => void;
+  showChart?: boolean;
+  chartData?: TrendDataPoint[];
 }
 
 const EngineCard: React.FC<EngineCardProps> = ({
@@ -44,6 +53,8 @@ const EngineCard: React.FC<EngineCardProps> = ({
   live = false,
   theme = 'light',
   onPress,
+  showChart = false,
+  chartData = [],
 }) => {
   const themeColors = getThemeColors(theme);
   const engineColor = designTokens.semantic[color];
@@ -116,6 +127,7 @@ const EngineCard: React.FC<EngineCardProps> = ({
     <Animated.View 
       style={[
         styles.card,
+        showChart && styles.cardWithChart,
         createNeumorphicContainer(theme, 'elevated'),
         { 
           transform: [
@@ -126,55 +138,79 @@ const EngineCard: React.FC<EngineCardProps> = ({
         }
       ]}
     >
-      {/* Left section - Main content */}
-      <View style={styles.leftSection}>
-        <View style={styles.header}>
-          <Text style={[styles.cardTitle, { color: themeColors.textSecondary }]}>
-            {title}
-          </Text>
-          {live && (
+      {/* Top section - Header and content */}
+      <View style={styles.topSection}>
+        {/* Left section - Main content */}
+        <View style={styles.leftSection}>
+          {/* Live indicator moved above title and aligned left */}
+          {live ? (
             <View style={styles.liveIndicator}>
               <View style={[styles.liveDot, { backgroundColor: designTokens.semantic.success }]} />
               <Text style={[styles.liveText, { color: designTokens.semantic.success }]}>
                 LIVE
               </Text>
             </View>
+          ) : (
+            <View style={styles.liveIndicator}>
+              <View style={[styles.liveDot, { backgroundColor: themeColors.textMuted }]} />
+              <Text style={[styles.liveText, { color: themeColors.textMuted }]}>
+                NONE
+              </Text>
+            </View>
           )}
-        </View>
 
-        <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
-          {subtitle}
-        </Text>
-      </View>
-
-      {/* Right section - Value and trend */}
-      <View style={styles.rightSection}>
-        <View style={styles.valueContainer}>
-          <Text style={[styles.value, { color: engineColor }]}>
-            {value}
+          <Text style={[styles.cardTitle, { color: themeColors.textSecondary }]}>
+            {title}
           </Text>
-          {trend && (
-            <Text style={[styles.trendIndicator, { color: getTrendColor() }]}>
-              {getTrendIcon()}
+
+          <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
+            {subtitle}
+          </Text>
+        </View>
+
+        {/* Right section - Value and trend */}
+        <View style={styles.rightSection}>
+          <View style={styles.valueContainer}>
+            <Text style={[styles.value, { color: engineColor }]}>
+              {value}
             </Text>
-          )}
+            {trend && (
+              <Text style={[styles.trendIndicator, { color: getTrendColor() }]}>
+                {getTrendIcon()}
+              </Text>
+            )}
+          </View>
+
+          {/* Status indicator */}
+          <View style={[styles.statusBar, { backgroundColor: `${engineColor}20` }]}>
+            <View style={[styles.statusFill, { 
+              backgroundColor: engineColor,
+              width: '75%'
+            }]} />
+          </View>
         </View>
 
-        {/* Status indicator */}
-        <View style={[styles.statusBar, { backgroundColor: `${engineColor}20` }]}>
-          <View style={[styles.statusFill, { 
-            backgroundColor: engineColor,
-            width: '75%'
-          }]} />
+        {/* Expand indicator */}
+        <View style={styles.expandIndicator}>
+          <Text style={[styles.expandArrow, { color: themeColors.textMuted }]}>
+            ›››
+          </Text>
         </View>
       </View>
 
-      {/* Expand indicator */}
-      <View style={styles.expandIndicator}>
-        <Text style={[styles.expandArrow, { color: themeColors.textMuted }]}>
-          ›››
-        </Text>
-      </View>
+      {/* Chart section - Only shown for thinking style */}
+      {showChart && chartData.length > 0 && (
+        <View style={styles.chartSection}>
+          <TrendChart
+            data={chartData}
+            theme={theme}
+            color={color}
+            height={140}
+            showPoints={false}
+            title=""
+          />
+        </View>
+      )}
     </Animated.View>
   );
 
@@ -197,40 +233,48 @@ const EngineCard: React.FC<EngineCardProps> = ({
 
 const styles = StyleSheet.create({
   touchable: {
-    marginVertical: spacing[2],
+    marginVertical: spacing[1],
+    alignSelf: 'center',
   },
   
   card: {
     width: SCREEN_WIDTH - (spacing[4] * 2),
-    height: 80,
+    height: 88,
     borderRadius: 16,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
+    flexDirection: 'column',
+  },
+
+  cardWithChart: {
+    height: 400,
+  },
+
+  topSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flex: 1,
   },
 
   leftSection: {
     flex: 1,
     justifyContent: 'center',
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[1],
+    height: '100%',
   },
 
   cardTitle: {
     ...typography.textStyles.headlineSmall,
     fontWeight: '700',
-    flex: 1,
+    lineHeight: 20,
+    marginBottom: spacing[1],
   },
 
   liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: spacing[1],
+    alignSelf: 'flex-start',
   },
 
   liveDot: {
@@ -250,23 +294,29 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.textStyles.bodySmall,
     fontWeight: '500',
+    lineHeight: 16,
+    marginTop: 2,
   },
 
   rightSection: {
     alignItems: 'flex-end',
     justifyContent: 'center',
-    minWidth: 80,
+    minWidth: 100,
+    height: '100%',
   },
 
   valueContainer: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     marginBottom: spacing[1],
+    height: 24,
   },
 
   value: {
     ...typography.textStyles.headlineSmall,
     fontWeight: '800',
+    textAlign: 'right',
+    lineHeight: 24,
   },
 
   trendIndicator: {
@@ -280,6 +330,7 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 2,
     overflow: 'hidden',
+    alignSelf: 'flex-end',
   },
 
   statusFill: {
@@ -290,12 +341,20 @@ const styles = StyleSheet.create({
   expandIndicator: {
     marginLeft: spacing[2],
     opacity: 0.6,
+    alignSelf: 'center',
   },
 
   expandArrow: {
     ...typography.textStyles.labelMedium,
     fontWeight: '300',
     letterSpacing: -1,
+  },
+
+  chartSection: {
+    marginTop: spacing[2],
+    paddingTop: spacing[2],
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(128, 128, 128, 0.2)',
   },
 });
 

@@ -79,22 +79,7 @@ const Tooltip: React.FC<TooltipProps> = ({
       } 
     }],
     { 
-      useNativeDriver: true,
-      listener: (event: any) => {
-        // Allow natural movement with gentle resistance for upward swipes
-        const translationY = event.nativeEvent.translationY;
-        
-        if (translationY >= 0) {
-          // Downward movement - allow freely with subtle damping
-          const dampedY = translationY * 0.85;
-          panY.setValue(dampedY);
-        } else {
-          // Upward movement - add gentle resistance that gets stronger
-          const resistance = Math.abs(translationY) * 0.3;
-          const dampedY = -resistance;
-          panY.setValue(dampedY);
-        }
-      }
+      useNativeDriver: true
     }
   );
 

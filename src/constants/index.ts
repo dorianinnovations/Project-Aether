@@ -11,9 +11,15 @@ export const APP_CONFIG = {
 
 export const STORAGE_KEYS = {
   USER_TOKEN: '@aether/user_token',
-  USER_DATA: '@aether/user_data',
   THEME: '@aether/theme',
-  SETTINGS: '@aether/settings',
+}
+
+// User-specific storage keys to prevent cross-account contamination
+export const getUserStorageKeys = (userId?: string) => ({
+  USER_DATA: userId ? `@aether/user_data_${userId}` : '@aether/user_data_temp',
+  SETTINGS: userId ? `@aether/settings_${userId}` : '@aether/settings_temp',
+  CONVERSATIONS: userId ? `@aether/conversations_${userId}` : '@aether/conversations_temp',
+  CACHE: userId ? `@aether/cache_${userId}` : '@aether/cache_temp',
   CONVERSATION_CACHE: '@aether/conversation_cache',
 } as const;
 

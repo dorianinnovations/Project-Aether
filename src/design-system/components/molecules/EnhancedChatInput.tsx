@@ -656,6 +656,16 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
         onRemoveAttachment={handleRemoveAttachment}
         theme={theme}
       />
+
+      {/* Disclaimer Text */}
+      <View style={styles.disclaimerContainer}>
+        <Text style={[
+          styles.disclaimerText,
+          { color: themeColors.textMuted }
+        ]}>
+          AI can make mistakes. Always verify important information.
+        </Text>
+      </View>
     </View>
     </PanGestureHandler>
   );
@@ -802,6 +812,18 @@ const styles = StyleSheet.create({
   attachmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  disclaimerContainer: {
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[1],
+    alignItems: 'center',
+  },
+  disclaimerText: {
+    fontSize: 10,
+    fontWeight: '400',
+    opacity: 0.6,
+    textAlign: 'center',
   },
 });
 
