@@ -21,7 +21,7 @@ export const getUserStorageKeys = (userId?: string) => ({
   CONVERSATIONS: userId ? `@aether/conversations_${userId}` : '@aether/conversations_temp',
   CACHE: userId ? `@aether/cache_${userId}` : '@aether/cache_temp',
   CONVERSATION_CACHE: '@aether/conversation_cache',
-} as const;
+});
 
 export const API_ENDPOINTS = {
   AUTH: {
