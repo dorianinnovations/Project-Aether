@@ -78,7 +78,7 @@ export const useNaturalScroll = ({ messages, isStreaming, onUserScrollUp, onKeyb
       index: latestMessageIndex,
       animated: true,
       viewPosition: 0, 
-      viewOffset: HEADER_HEIGHT + 50, 
+      viewOffset: HEADER_HEIGHT + 100, 
     });
     
     // Notify parent component

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { designTokens, getThemeColors } from '../../tokens/colors';
+import { useSettings } from '../../../hooks/useSettings';
 
 interface PageBackgroundProps {
   theme?: 'light' | 'dark';
@@ -26,6 +27,7 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
   style,
 }) => {
   const themeColors = getThemeColors(theme);
+  const { settings } = useSettings();
 
   // The dreamy baby blue gradient colors - brighter (closer to white)!
   const dreamyGradientColors = ['#ffffff', '#f2f8ff', '#e2f0ff', '#eaf4ff', '#f4faff'];
@@ -34,6 +36,11 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
   const darkGrey = '#0F0F0F';
 
   const getGradientColors = (): string[] => {
+    // If plain white background is enabled and it's light theme, use pure white
+    if (settings.plainWhiteBackground && theme === 'light') {
+      return ['#ffffff', '#ffffff', '#ffffff'];
+    }
+
     switch (variant) {
       case 'hero':
         return theme === 'light' 
@@ -77,7 +84,21 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
     }
   };
 
-  // For light mode, always use the dreamy gradient
+  // For light mode with plain white background, use solid white
+  if (theme === 'light' && settings.plainWhiteBackground) {
+    return (
+      <View 
+        style={[
+          styles.container,
+          { backgroundColor: '#ffffff' },
+          style,
+        ]}
+      >
+        {children}
+      </View>
+    );
+  }
+
   // For dark mode, use solid charcoal (matching numina-mobile exactly)
   if (theme === 'dark') {
     return (

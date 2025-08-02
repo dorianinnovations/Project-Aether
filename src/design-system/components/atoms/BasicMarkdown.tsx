@@ -88,11 +88,42 @@ const BasicMarkdown: React.FC<BasicMarkdownProps> = ({ children, theme = 'light'
           </View>
         );
       }
-      // Regular text
-      else if (line.trim()) {
+      // Headers (## Header or # Header)
+      else if (/^#+\s/.test(line)) {
+        const headerMatch = line.match(/^(#+)\s(.+)/);
+        if (headerMatch) {
+          const level = headerMatch[1].length;
+          const text = headerMatch[2];
+          const headerStyle = level === 1 ? styles.header1 : styles.header2;
+          
+          elements.push(
+            <View key={index} style={styles.headerContainer}>
+              <Text style={[headerStyle, style, { color: getCyclingPastelColor(colorIndex++, theme) }]}>
+                {formatInlineText(text, theme)}
+              </Text>
+            </View>
+          );
+        }
+      }
+      // Question/important text (starts with ? or contains key phrases)
+      else if (/^\?/.test(line) || /\b(how|what|why|when|where|should|could|would)\b/i.test(line.substring(0, 50))) {
         elements.push(
-          <View key={index} style={styles.paragraphContainer}>
-            <Text style={[styles.text, style]}>
+          <View key={index} style={styles.questionContainer}>
+            <Text style={[styles.questionText, style]}>
+              {formatInlineText(line, theme)}
+            </Text>
+          </View>
+        );
+      }
+      // Regular text - detect if it's a longer paragraph vs short sentence
+      else if (line.trim()) {
+        const isLongParagraph = line.length > 100;
+        const containerStyle = isLongParagraph ? styles.longParagraphContainer : styles.paragraphContainer;
+        const textStyle = isLongParagraph ? styles.paragraphText : styles.text;
+        
+        elements.push(
+          <View key={index} style={containerStyle}>
+            <Text style={[textStyle, style]}>
               {formatInlineText(line, theme)}
             </Text>
           </View>
@@ -209,6 +240,50 @@ const styles = StyleSheet.create({
   },
   emptyLine: {
     height: 12,
+  },
+  headerContainer: {
+    marginVertical: 8,
+    marginBottom: 4,
+  },
+  header1: {
+    fontSize: 22,
+    lineHeight: 30,
+    fontFamily: 'Nunito-Bold',
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  header2: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontFamily: 'Nunito-SemiBold',
+    fontWeight: '600',
+    letterSpacing: -0.3,
+  },
+  questionContainer: {
+    marginVertical: 4,
+    paddingLeft: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: 'rgba(100, 181, 246, 0.4)',
+    paddingVertical: 2,
+  },
+  questionText: {
+    fontSize: 18,
+    lineHeight: 27,
+    fontFamily: 'Nunito-SemiBold',
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    fontStyle: 'italic',
+  },
+  longParagraphContainer: {
+    marginVertical: 6,
+    paddingHorizontal: 2,
+  },
+  paragraphText: {
+    fontSize: 17,
+    lineHeight: 27,
+    letterSpacing: -0.2,
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'left',
   },
 });
 

@@ -73,6 +73,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [keepScreenOn, setKeepScreenOn] = useState(false);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [autoLock, setAutoLock] = useState(true);
+  const [plainWhiteBackground, setPlainWhiteBackground] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,6 +140,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         { key: 'animations', label: 'Animations', value: animationsEnabled, type: 'switch' },
         { key: 'reduceMotion', label: 'Reduce Motion', value: reduceMotion, type: 'switch' },
         { key: 'showTimestamps', label: 'Show Timestamps', value: showTimestamps, type: 'switch' },
+        { key: 'plainWhiteBackground', label: 'Plain White Background', value: plainWhiteBackground, type: 'switch' },
       ]
     },
     accessibility: {
@@ -304,6 +306,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setKeepScreenOn(settings.keepScreenOn);
       setShowTimestamps(settings.showTimestamps);
       setAutoLock(settings.autoLock);
+      setPlainWhiteBackground(settings.plainWhiteBackground);
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -426,6 +429,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         case 'autoLock':
           setAutoLock(value);
           await SettingsStorage.setSetting('autoLock', value);
+          break;
+        case 'plainWhiteBackground':
+          setPlainWhiteBackground(value);
+          await SettingsStorage.setSetting('plainWhiteBackground', value);
           break;
       }
     } catch (error) {

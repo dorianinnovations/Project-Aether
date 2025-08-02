@@ -91,6 +91,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     handleMessagePress,
     handleMessageLongPress,
     handleConversationSelect,
+    setMessages,
     flatListRef: messagesRef,
   } = useMessages(() => setShowGreeting(false));
 
@@ -243,11 +244,21 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
   };
 
   const handleEnhancedSend = (attachments?: any[]) => {
+    if (!inputText.trim() && (!attachments || attachments.length === 0)) return;
+    
     if (attachments && attachments.length > 0) {
       // Handle attachments
       console.log('Sending with attachments:', attachments);
     }
-    handleSend();
+    
+    // Send the message with the current input text
+    handleMessageSend(inputText);
+    
+    // Clear the input text after sending
+    setInputText('');
+    
+    // Clear attachments after sending
+    setAttachments([]);
   };
 
   // Handle input focus/blur for tooltip fade
@@ -495,6 +506,10 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
         isVisible={showConversationDrawer}
         onClose={() => setShowConversationDrawer(false)}
         onConversationSelect={handleConversationSelect}
+        onStartNewChat={() => {
+          setMessages([]);
+          setShowConversationDrawer(false);
+        }}
         theme={theme}
       />
       

@@ -181,7 +181,14 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
     
     try {
       const response = await ConversationAPI.getRecentConversations(20);
-      setConversations(response.conversations || []);
+      const conversations = response.conversations || [];
+      
+      // Filter out duplicate conversations and ensure unique entries
+      const uniqueConversations = conversations.filter((conversation: Conversation, index: number, self: Conversation[]) => 
+        index === self.findIndex((c: Conversation) => c._id === conversation._id)
+      );
+      
+      setConversations(uniqueConversations);
     } catch (err: any) {
       console.error('Conversation loading error:', err);
       
@@ -766,7 +773,7 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
                 styles.conversationTitle,
                 { color: themeColors.text }
               ]}>
-                {item.title || 'Untitled Conversation'}
+                {item.title && item.title.trim() !== '' ? item.title : 'Untitled Conversation'}
               </Text>
               <Text style={[
                 styles.conversationTime,
