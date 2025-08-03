@@ -33,6 +33,7 @@ import Icon from '../../design-system/components/atoms/Icon';
 
 // Contexts
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSettings } from '../../hooks/useSettings';
 
 // Services
 import { AuthAPI, TokenManager, UserAPI, ConversationAPI } from '../../services/api';
@@ -59,6 +60,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   navigation,
 }) => {
   const { theme, colors, toggleTheme } = useTheme();
+  const { settings: globalSettings, updateSetting } = useSettings();
   // Local state for settings
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
@@ -73,7 +75,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [keepScreenOn, setKeepScreenOn] = useState(false);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [autoLock, setAutoLock] = useState(true);
-  const [plainWhiteBackground, setPlainWhiteBackground] = useState(false);
+  const [backgroundType, setBackgroundType] = useState<'blue' | 'white'>('blue');
+  const [dynamicOptions, setDynamicOptions] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -134,13 +137,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     appearance: {
       title: 'Appearance',
       icon: 'sliders',
-      description: 'Theme and animations',
+      description: 'Theme and dynamic options',
       items: [
         { key: 'theme', label: 'Dark Mode', value: theme === 'dark', type: 'switch' },
-        { key: 'animations', label: 'Animations', value: animationsEnabled, type: 'switch' },
-        { key: 'reduceMotion', label: 'Reduce Motion', value: reduceMotion, type: 'switch' },
-        { key: 'showTimestamps', label: 'Show Timestamps', value: showTimestamps, type: 'switch' },
-        { key: 'plainWhiteBackground', label: 'Plain White Background', value: plainWhiteBackground, type: 'switch' },
+        { key: 'dynamicOptions', label: 'Dynamic Options', value: dynamicOptions, type: 'switch' },
+        { key: 'backgroundType', label: 'Background Style', value: backgroundType, type: 'selector' },
       ]
     },
     accessibility: {
@@ -196,6 +197,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     loadSettings();
     checkAuthState();
   }, []);
+
+  // Sync local background type with global settings
+  useEffect(() => {
+    setBackgroundType(globalSettings.backgroundType);
+  }, [globalSettings.backgroundType]);
 
   // Cleanup animation timeouts on unmount
   useEffect(() => {
@@ -306,7 +312,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setKeepScreenOn(settings.keepScreenOn);
       setShowTimestamps(settings.showTimestamps);
       setAutoLock(settings.autoLock);
-      setPlainWhiteBackground(settings.plainWhiteBackground);
+      setBackgroundType(settings.backgroundType || globalSettings.backgroundType);
+      setDynamicOptions(settings.dynamicOptions);
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -430,13 +437,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           setAutoLock(value);
           await SettingsStorage.setSetting('autoLock', value);
           break;
-        case 'plainWhiteBackground':
-          setPlainWhiteBackground(value);
-          await SettingsStorage.setSetting('plainWhiteBackground', value);
+        case 'dynamicOptions':
+          setDynamicOptions(value);
+          await updateSetting('dynamicOptions', value);
           break;
       }
     } catch (error) {
       console.error(`Failed to save ${setting} setting:`, error);
+    }
+  };
+
+  const handleBackgroundTypeSetting = async (backgroundType: 'blue' | 'white') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    try {
+      setBackgroundType(backgroundType);
+      await updateSetting('backgroundType', backgroundType);
+    } catch (error) {
+      console.error('Failed to save backgroundType setting:', error);
     }
   };
 
@@ -450,6 +468,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         } else {
           await handleAdvancedSetting(item.key, !item.value);
         }
+        break;
+      case 'selector':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await handleAdvancedSetting(item.key, item.value);
         break;
       case 'action':
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -645,11 +667,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   }
                 ]}
                 activeOpacity={0.8}
-                onPress={item.type === 'switch' ? () => handleSubDrawerItem(activeSubDrawer, { ...item, value: !item.value }) : undefined}
+                onPress={item.type === 'switch' ? () => handleSubDrawerItem(activeSubDrawer, item) : item.type === 'selector' ? undefined : undefined}
               >
                 <View style={styles.iconContainer}>
                   {item.type === 'switch' && <Feather name="toggle-left" size={16} color={itemColor} />}
                   {item.type === 'action' && <Feather name={(item as any).destructive ? "trash-2" : "download"} size={16} color={itemColor} />}
+                  {item.type === 'selector' && <Feather name="layers" size={16} color={itemColor} />}
                 </View>
                 
                 <View style={styles.subDrawerItemContent}>
@@ -659,7 +682,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   {item.type === 'switch' && (
                     <Switch
                       value={item.value as boolean}
-                      onValueChange={(value) => handleSubDrawerItem(activeSubDrawer, { ...item, value: !item.value })}
+                      onValueChange={(value) => handleAdvancedSetting(item.key, value)}
                       trackColor={{ false: colors.surfaces.sunken, true: itemColor }}
                       thumbColor={colors.surface}
                     />
@@ -681,6 +704,55 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         {item.label}
                       </Text>
                     </TouchableOpacity>
+                  )}
+                  {item.type === 'selector' && item.key === 'backgroundType' && (
+                    <View style={styles.backgroundSelector}>
+                      <TouchableOpacity
+                        style={[
+                          styles.backgroundOption,
+                          {
+                            backgroundColor: backgroundType === 'blue' 
+                              ? `${itemColor}20` 
+                              : theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                            borderColor: backgroundType === 'blue' 
+                              ? itemColor 
+                              : theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                            borderWidth: backgroundType === 'blue' ? 2 : 1,
+                          }
+                        ]}
+                        onPress={() => handleBackgroundTypeSetting('blue')}
+                      >
+                        <View style={[styles.gradientPreview, { backgroundColor: '#f2f8ff' }]} />
+                        <Text style={[styles.backgroundOptionText, { 
+                          color: backgroundType === 'blue' ? itemColor : colors.text,
+                          fontWeight: backgroundType === 'blue' ? '600' : '400',
+                          marginLeft: spacing[2]
+                        }]}>Blue</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[
+                          styles.backgroundOption,
+                          {
+                            backgroundColor: backgroundType === 'white' 
+                              ? `${itemColor}20` 
+                              : theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                            borderColor: backgroundType === 'white' 
+                              ? itemColor 
+                              : theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                            borderWidth: backgroundType === 'white' ? 2 : 1,
+                          }
+                        ]}
+                        onPress={() => handleBackgroundTypeSetting('white')}
+                      >
+                        <View style={[styles.whitePreview, { backgroundColor: '#ffffff' }]} />
+                        <Text style={[styles.backgroundOptionText, { 
+                          color: backgroundType === 'white' ? itemColor : colors.text,
+                          fontWeight: backgroundType === 'white' ? '600' : '400',
+                          marginLeft: spacing[2]
+                        }]}>White</Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
               </TouchableOpacity>
@@ -786,7 +858,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 }]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // TODO: Navigate to help & support screen
                 }}
                 activeOpacity={0.8}
               >
@@ -1075,7 +1146,7 @@ const styles = StyleSheet.create({
   subDrawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    minHeight: 80,
     borderRadius: 12,
     marginHorizontal: spacing[1],
     marginVertical: 2,
@@ -1087,7 +1158,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     flex: 1,
-    minHeight: 44,
+    minHeight: 80,
   },
   subDrawerItemLabel: {
     fontFamily: typography.fonts.body,
@@ -1215,6 +1286,38 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.body,
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  
+  // Background Selector
+  backgroundSelector: {
+    flexDirection: 'row',
+  },
+  backgroundOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: spacing[2],
+  },
+  backgroundOptionText: {
+    fontFamily: typography.fonts.body,
+    fontSize: 13,
+    letterSpacing: -0.1,
+  },
+  gradientPreview: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#f2f8ff',
+  },
+  whitePreview: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
 });
 

@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 // Design System
 import { PageBackground } from '../design-system/components/atoms/PageBackground';
-import { Header, HeaderMenu } from '../design-system/components/organisms';
+import { Header, HeaderMenu, SignOutModal } from '../design-system/components/organisms';
 import { useTheme } from '../contexts/ThemeContext';
 import { useHeaderMenu } from '../design-system/hooks';
 import { typography } from '../design-system/tokens/typography';
@@ -26,7 +26,7 @@ import { spacing } from '../design-system/tokens/spacing';
 import { getButtonColors } from '../design-system/tokens/colors';
 
 // Services
-import { UserAPI, TokenManager } from '../services/api';
+import { UserAPI, TokenManager, AuthAPI } from '../services/api';
 
 interface UserProfile {
   profilePicture?: string;
@@ -44,10 +44,12 @@ export const ProfileScreen: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   // Header menu hook
   const { showHeaderMenu, setShowHeaderMenu, handleMenuAction, toggleHeaderMenu } = useHeaderMenu({
-    screenName: 'profile'
+    screenName: 'profile',
+    onSignOut: () => setShowSignOutModal(true)
   });
 
   useEffect(() => {
@@ -60,6 +62,17 @@ export const ProfileScreen: React.FC = () => {
 
   const handleMenuPress = () => {
     toggleHeaderMenu();
+  };
+
+  const handleSignOut = async () => {
+    try {
+      setShowSignOutModal(false);
+      await AuthAPI.logout();
+      // Auth check in App.tsx will handle navigation automatically
+    } catch (error) {
+      console.error('Sign out error:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   const loadProfile = async () => {
@@ -363,8 +376,15 @@ export const ProfileScreen: React.FC = () => {
                 <Feather name="x" size={16} color="#2D5A3D" />
               </TouchableOpacity>
             )}
+            {/* Online Status Indicator */}
+            <View style={[styles.onlineIndicator, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
+              <View style={[styles.onlineDot, { backgroundColor: '#4CAF50' }]} />
+              <Text style={[styles.onlineText, { color: '#4CAF50' }]}>online</Text>
+            </View>
+            
             {/* Profile Header */}
             <View style={styles.profileHeader}>
+              
               <TouchableOpacity 
                 style={styles.profileImageContainer} 
                 onPress={editMode ? pickImage : undefined}
@@ -402,7 +422,7 @@ export const ProfileScreen: React.FC = () => {
           {/* Profile Fields */}
           <View style={styles.fieldsContainer}>
             <View style={styles.fieldContainer}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Name</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Username</Text>
               {editMode ? (
                 <TextInput
                   style={[styles.input, { 
@@ -412,22 +432,16 @@ export const ProfileScreen: React.FC = () => {
                   }]}
                   value={profile.name || ''}
                   onChangeText={(text) => handleFieldChange('name', text)}
-                  placeholder="Enter your name"
+                  placeholder="Enter your username"
                   placeholderTextColor={colors.textSecondary}
                 />
               ) : (
                 <Text style={[styles.fieldValue, { color: colors.text }]}>
-                  {profile.name || 'No name set'}
+                  {profile.name || 'No username set'}
                 </Text>
               )}
             </View>
 
-            <View style={styles.fieldContainer}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Email</Text>
-              <Text style={[styles.fieldValue, { color: colors.text, opacity: 0.7 }]}>
-                {profile.email}
-              </Text>
-            </View>
 
           </View>
 
@@ -440,6 +454,14 @@ export const ProfileScreen: React.FC = () => {
           onClose={() => setShowHeaderMenu(false)}
           onAction={handleMenuAction}
           showAuthOptions={true}
+        />
+
+        {/* Sign Out Modal */}
+        <SignOutModal
+          visible={showSignOutModal}
+          onClose={() => setShowSignOutModal(false)}
+          onConfirm={handleSignOut}
+          theme={theme}
         />
       </SafeAreaView>
     </PageBackground>
@@ -474,6 +496,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
     height: '100%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
   },
   bannerOverlay: {
     position: 'absolute',
@@ -497,6 +523,29 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
     minHeight: 160,
   },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: -48,
+    right: spacing[5],
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  onlineText: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'lowercase',
+  },
   profileImageContainer: {
     position: 'absolute',
     bottom: -60,
@@ -508,6 +557,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   placeholderImage: {
     justifyContent: 'center',

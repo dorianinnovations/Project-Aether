@@ -23,10 +23,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
+import LottieView from 'lottie-react-native';
 
 // Enhanced Components
 import { EnhancedChatInput, ChatHeader } from '../../design-system/components/molecules';
 import EnhancedBubble from '../../design-system/components/molecules/EnhancedBubble';
+import BasicMarkdown from '../../design-system/components/atoms/BasicMarkdown';
 import { Header, HeaderMenu, SignOutModal } from '../../design-system/components/organisms';
 import { PageBackground } from '../../design-system/components/atoms/PageBackground';
 import SettingsModal from './SettingsModal';
@@ -53,7 +55,7 @@ import { useGreeting } from '../../hooks/useGreeting';
 import { useKeyboardAnimation } from '../../hooks/useKeyboardAnimation';
 import { useMessages } from '../../hooks/useMessages';
 import { useDynamicPrompts } from '../../hooks/useDynamicPrompts';
-import { useNaturalScroll } from '../../hooks/useNaturalScroll';
+import { useSimpleScroll } from '../../hooks/useSimpleScroll';
 
 // Services
 import { AuthAPI } from '../../services/api';
@@ -95,24 +97,15 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     flatListRef: messagesRef,
   } = useMessages(() => setShowGreeting(false));
 
-  // Natural scroll behavior hook
-  const {
-    flatListRef,
-    handleScroll,
-    scrollToBottom,
-    snapToUserMessage,
-    scrollToBottomOnKeyboard,
-    getScrollState,
-  } = useNaturalScroll({
-    messages,
-    isStreaming,
-    onUserScrollUp: (isScrolledUp) => {
-      // Could update UI to show scroll-to-bottom button when user scrolls up
-    },
-    onKeyboardShow: () => {
-      // Keyboard shown - scrolled to bottom
-    },
-  });
+  // Simple scroll hook
+  const { 
+    flatListRef, 
+    scrollToBottom, 
+    gentleScrollDown, 
+    handleScrollBegin, 
+    handleScrollEnd,
+    showScrollButton
+  } = useSimpleScroll();
 
   // Dynamic prompts hook for intelligent contextual options
   const {
@@ -185,8 +178,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
     setInputText('');
     setAttachments([]);
     
-    // Note: Scroll is now handled automatically by useNaturalScroll hook
-    // No manual scroll triggers needed here
+    // Auto-scroll will be handled by the FlatList onContentSizeChange
   };
 
   // Handle suggestion press
@@ -215,7 +207,7 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
   // Handle scroll to bottom button press
   const handleScrollToBottom = () => {
-    scrollToBottom();
+    flatListRef.current?.scrollToEnd({ animated: true });
   };
 
   // Enhanced handlers for new components
@@ -271,8 +263,8 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
       useNativeDriver: true,
     }).start();
     
-    // Note: Scroll is now handled automatically by keyboard listeners in useNaturalScroll
-    // No manual scroll trigger needed here
+    // Smooth scroll to bottom when input is focused
+    scrollToBottom();
   };
 
   const handleInputBlur = () => {
@@ -306,29 +298,60 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
 
   // Render message item
   const renderMessage = ({ item, index }: { item: any; index: number }) => {
-    // Transform the message format for message bubble
-    const enhancedMessage = {
-      id: item.id,
-      text: item.message,
-      sender: item.sender,
-      timestamp: item.timestamp,
-      variant: item.variant,
-      isStreaming: item.variant === 'streaming',
-      isSystem: item.sender === 'system',
-      metadata: item.metadata,
-    };
+    const isUser = item.sender === 'user';
+    const themeColors = getThemeColors(theme);
     
     return (
-      <EnhancedBubble
-        key={item.id}
-        message={enhancedMessage}
-        index={index}
-        theme={theme}
-        messageIndex={index}
-        colorfulBubblesEnabled={settings.colorfulBubblesEnabled}
-        onLongPress={() => handleMessageLongPress(item)}
-        onSpeakMessage={(text) => console.log('Speak:', text)}
-      />
+      <View style={styles.messageItem}>
+        {isUser ? (
+          <View style={styles.userContainer}>
+            <View style={[
+              styles.userBubble,
+              {
+                backgroundColor: theme === 'dark' ? '#2A2A2A' : '#F0F0F0',
+                borderTopWidth: 1,
+                borderLeftWidth: 1,
+                borderRightWidth: 1,
+                borderBottomWidth: 1,
+                borderTopColor: theme === 'dark' ? '#454545' : '#FFFFFF',
+                borderLeftColor: theme === 'dark' ? '#454545' : '#FFFFFF',
+                borderRightColor: theme === 'dark' ? '#151515' : '#C8C8C8',
+                borderBottomColor: theme === 'dark' ? '#151515' : '#C8C8C8',
+                shadowColor: theme === 'dark' ? '#000000' : '#000000',
+                shadowOffset: { width: 2, height: 2 },
+                shadowOpacity: theme === 'dark' ? 0.4 : 0.15,
+                shadowRadius: 4,
+                elevation: 3,
+              }
+            ]}>
+              <Text style={[
+                styles.userText,
+                { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }
+              ]}>
+                {item.message}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.botContainer}>
+            {item.variant === 'streaming' && !item.message?.trim() ? (
+              <LottieView
+                source={require('../../../assets/NuminaCloudBubble.json')}
+                autoPlay
+                loop
+                style={styles.lottieAnimation}
+              />
+            ) : (
+              <BasicMarkdown theme={theme} style={[
+                styles.botText,
+                { color: theme === 'dark' ? '#ffffff' : '#1a1a1a' }
+              ]}>
+                {item.message}
+              </BasicMarkdown>
+            )}
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -367,124 +390,78 @@ const ChatScreen: React.FC<ChatScreenProps> = () => {
           </Animated.View>
         )}
       
-      <KeyboardAvoidingView 
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        
+      <View style={styles.chatArea}>
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           style={styles.messagesList}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={styles.messagesContainer}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          initialNumToRender={15}
-          updateCellsBatchingPeriod={50}
+          keyboardShouldPersistTaps="handled"
+          ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: headerAnim } } }],
             { 
               useNativeDriver: false,
               listener: (event: any) => {
-                // Handle header animation
                 const offsetY = event.nativeEvent.contentOffset.y;
                 headerAnim.setValue(offsetY > 50 ? 0.8 : 1);
-                
-                // Handle natural scroll behavior
-                handleScroll(event);
               }
             }
           )}
-          scrollEventThrottle={16}
+          onScrollBeginDrag={handleScrollBegin}
+          onScrollEndDrag={handleScrollEnd}
+          onContentSizeChange={gentleScrollDown}
         />
-        
-        <ScrollToBottomButton
-          visible={false}
-          onPress={handleScrollToBottom}
-          theme={theme}
-        />
-        
-        <Tooltip
-          visible={showCopyTooltip}
-          text="Copied to clipboard"
-          theme={theme}
-          onHide={() => setShowCopyTooltip(false)}
-        />
-        
-        <View style={{ position: 'relative' }}>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: -50, 
-              left: 12,
-              right: 12,
-              zIndex: 1000,
-              opacity: tooltipOpacity,
-              transform: [{ scale: tooltipScale }],
-            }}
-          >
-            <TouchableOpacity
-              onPress={handleDynamicOptionsPress}
-              activeOpacity={0.85}
-              onPressIn={() => {
-                // Subtle haptic feedback on press start
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-            >
-              <Tooltip
-                visible={showTestTooltip}
-                leftText="Dynamic Options"
-                rightText="• Swipe down to dismiss"
-                theme={theme}
-                onHide={() => setShowTestTooltip(false)}
-                swipeToDismiss={true}
-                style={{
-                  position: 'relative',
-                  top: 30,
-                  width: '92%',
-                }}
-                tooltipStyle={{
-                  borderRadius: 8,
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                  width: '100%',
-                }}
-                textStyle={{
-                  fontSize: 10,
-                  lineHeight: 14,
-                }}
-                autoHideDuration={0}
-              />
-            </TouchableOpacity>
-          </Animated.View>
+      </View>
 
-          <View style={styles.chatInputContainer}>
-            <EnhancedChatInput
-              value={inputText}
-              onChangeText={setInputText}
-              onSend={handleEnhancedSend}
-              onVoiceStart={handleVoiceStart}
-              onVoiceEnd={handleVoiceEnd}
-              isLoading={isLoading}
-              theme={theme}
-              placeholder="What up?"
-              nextMessageIndex={messages.length}
-              voiceEnabled={false}
-              enableFileUpload={true}
-              maxAttachments={5}
-              attachments={attachments}
-              onAttachmentsChange={setAttachments}
-              colorfulBubblesEnabled={settings.colorfulBubblesEnabled}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-              onSwipeUp={() => setShowTestTooltip(true)}
-            />
-          </View>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.inputContainer}
+      >
+        {showScrollButton && (
+          <TouchableOpacity 
+            onPress={scrollToBottom}
+            style={styles.scrollToBottomButton}
+            activeOpacity={0.7}
+          >
+            <View style={[
+              styles.scrollButtonCircle,
+              { backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff' }
+            ]}>
+              <Text style={[
+                styles.scrollButtonArrow,
+                { color: theme === 'dark' ? '#ffffff' : '#444444' }
+              ]}>
+                ↓
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        
+        <View style={styles.chatInputWrapper}>
+          <EnhancedChatInput
+            value={inputText}
+            onChangeText={setInputText}
+            onSend={handleEnhancedSend}
+            onVoiceStart={handleVoiceStart}
+            onVoiceEnd={handleVoiceEnd}
+            isLoading={isLoading}
+            theme={theme}
+            placeholder="What up?"
+            nextMessageIndex={messages.length}
+            voiceEnabled={false}
+            enableFileUpload={true}
+            maxAttachments={5}
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
+            colorfulBubblesEnabled={settings.colorfulBubblesEnabled}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            onSwipeUp={() => setShowTestTooltip(true)}
+          />
         </View>
       </KeyboardAvoidingView>
       
@@ -695,8 +672,105 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  keyboardContainer: {
+  // Chat Layout
+  chatArea: {
     flex: 1,
+  },
+  
+  messagesList: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  
+  messagesContainer: {
+    paddingTop: Platform.OS === 'ios' ? 90 : 70,
+    paddingBottom: 16,
+    gap: 0,
+  },
+  
+  inputContainer: {
+    backgroundColor: 'transparent',
+  },
+  
+  chatInputWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+
+  // Message Styles
+  messageItem: {
+    marginVertical: 8,
+    width: '100%',
+  },
+  
+  userContainer: {
+    alignItems: 'flex-end',
+    width: '100%',
+  },
+  
+  userBubble: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  
+  userText: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontFamily: 'Nunito-Regular',
+    fontWeight: '400',
+  },
+  
+  botContainer: {
+    alignItems: 'flex-start',
+    width: '100%',
+    paddingHorizontal: 4,
+  },
+  
+  botText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontFamily: 'Nunito-Regular',
+    fontWeight: '400',
+    maxWidth: '95%',
+  },
+
+  lottieAnimation: {
+    width: 76,
+    height: 46,
+    alignSelf: 'flex-start',
+  },
+
+  // Scroll to Bottom Button
+  scrollToBottomButton: {
+    position: 'absolute',
+    bottom: 80,
+    alignSelf: 'center',
+    zIndex: 1000,
+  },
+  
+  scrollButtonCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  
+  scrollButtonArrow: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 
   // Dynamic Greeting Banner
@@ -710,7 +784,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[4],
-    transform: [{ translateY: -12 }], // Offset to account for text height
+    transform: [{ translateY: -12 }],
   },
   greetingText: {
     fontSize: 24,
@@ -718,20 +792,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_500Medium',
     letterSpacing: -0.3,
     textAlign: 'center',
-  },
-
-
-  // Messages
-  messagesList: {
-    flex: 1,
-    paddingHorizontal: spacing[3],
-    zIndex: 1, // Ensure messages appear above background but below header
-  },
-  messagesContent: {
-    paddingTop: Platform.OS === 'ios' ? 140 : 120, // Extra clearance for header to prevent hiding
-    paddingBottom: SCREEN_HEIGHT * 0.7, // Industry standard: Ample space for streaming content to flow into
-    gap: spacing[3], // Increased spacing between messages for better readability
-    minHeight: SCREEN_HEIGHT * 1.5, // Ensure enough space for natural scrolling behavior
   },
 
   // Dynamic Options Modal
@@ -834,11 +894,6 @@ const styles = StyleSheet.create({
   closeButtonText: {
     ...typography.textStyles.labelMedium,
     fontWeight: '500',
-  },
-  chatInputContainer: {
-    marginHorizontal: spacing[4],
-    marginTop: spacing[4],
-    marginBottom: -spacing[4],
   },
 });
 

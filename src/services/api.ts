@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StorageCleanup } from '../utils/storageCleanup';
 
 // API Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://server-a7od.onrender.com';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 const AUTH_TOKEN_KEY = '@numina_auth_token';
 
 // User-specific storage keys to prevent cross-account contamination
@@ -66,9 +66,11 @@ export interface ChatResponse {
     tier?: string;
     responseTime?: number;
     cognitiveEngineUsed?: boolean;
+    content?: string; // Added for vision API compatibility
   };
   // Legacy support for old format
   content?: string;
+  response?: string; // Added for direct response format
   timestamp?: string;
   metadata?: any;
 }
@@ -81,79 +83,27 @@ export interface ApiError {
   retryAfter?: number;
 }
 
-// UBPM Types
-export interface UBPMContext {
-  userId: string;
-  status?: string;
-  behavioralContext: {
-    communicationStyle: string;
-    preferredInteractionMode: string;
-    responseTime: string;
-    topicPreferences: string[];
-    detectedPatterns?: any[];
-    confidence?: number;
-  };
-  personalityContext: {
-    openness: number;
-    conscientiousness: number;
-    extraversion: number;
-    agreeableness: number;
-    neuroticism: number;
-  };
-  temporalContext: {
-    mostActiveHours: number[];
-    preferredSessionLength: number;
-    consistencyScore: number;
-  };
-  emotionalContext?: {
-    emotionalPatterns?: any[];
-  };
-  personalityTraits?: any[];
-  confidence: number;
-  dataPoints: number;
-  lastUpdated: string;
-  note?: string;
-  dataQuality?: {
-    score: number;
-    indicators: string[];
-    completeness?: number;
-    freshness?: number;
-  };
-}
 
-export interface CollectiveSnapshot {
-  id: string;
-  timestamp: string;
-  sampleSize: number;
-  dominantEmotion: string;
-  avgIntensity: number;
-  insight: string;
-  archetype: string;
-  status: string;
-  timeRange: string;
-}
-
-export interface SystemMetrics {
-  memory: {
-    systemUptime: number;
-    totalRequests: number;
-    requestsPerHour: number;
-    totalTokensSaved: number;
-    totalCostSaved: number;
-    optimizationStrategies: Record<string, number>;
-    activeUsers: number;
-    averageSavingsPerRequest: string;
-  };
-}
 
 // Token management
 export const TokenManager = {
   async getToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      return token;
     } catch (error) {
       console.error('Error getting token:', error);
       return null;
+    }
+  },
+
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const token = await this.getToken();
+      return !!token;
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      return false;
     }
   },
 
@@ -268,7 +218,10 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
-        await TokenManager.removeToken();
+        // Only remove token if this is a critical endpoint, not for optional requests
+        if (!originalRequest.url?.includes('/conversations') && !originalRequest.url?.includes('/socket.io')) {
+          await TokenManager.removeToken();
+        }
         // Navigation to login should be handled by the app
       }
     }
@@ -385,18 +338,26 @@ export const ChatAPI = {
     
     if (attachments && attachments.length > 0) {
       const formData = new FormData();
-      formData.append('prompt', prompt);
-      formData.append('stream', 'false'); // Force non-streaming for attachments
+      formData.append('message', prompt);
+      formData.append('stream', 'false'); // Force non-streaming for attachments (required for vision)
       
       attachments.forEach((attachment, index) => {
         if (attachment.type === 'image') {
           const imageFile = {
             uri: attachment.uri,
             type: attachment.mimeType || 'image/jpeg',
-            name: attachment.name || `photo_${index}.jpg`,
+            name: attachment.name || `image_${index}.jpg`,
           } as any;
           
-          formData.append('photos', imageFile);
+          formData.append('files', imageFile);
+        } else if (attachment.type === 'document') {
+          const docFile = {
+            uri: attachment.uri,
+            type: attachment.mimeType || 'application/octet-stream',
+            name: attachment.name || `document_${index}`,
+          } as any;
+          
+          formData.append('files', docFile);
         }
       });
       
@@ -405,6 +366,7 @@ export const ChatAPI = {
           'Content-Type': 'multipart/form-data',
         },
       });
+      
       
       // Normalize response format for photo responses
       if (response.data.success && response.data.data) {
@@ -418,20 +380,50 @@ export const ChatAPI = {
           }
         };
       }
+      
+      // Handle different response formats from vision API
+      let content = '';
+      let metadata: any = {};
+      
+      // Check various possible response structures
+      if (response.data.success && response.data.data && response.data.data.response) {
+        content = response.data.data.response;
+        metadata = response.data.data;
+      } else if (response.data.content) {
+        content = response.data.content;
+        metadata = response.data;
+      } else if (response.data.response) {
+        content = response.data.response;
+        metadata = response.data;
+      } else if (response.data.data && response.data.data.content) {
+        content = response.data.data.content;
+        metadata = response.data.data;
+      } else if (typeof response.data === 'string') {
+        content = response.data;
+      }
+      
+      if (content) {
+        return {
+          success: true,
+          content: content,
+          data: {
+            response: content,
+            tier: (metadata as any)?.tier || 'vision',
+            responseTime: (metadata as any)?.responseTime || 0,
+            toolResults: (metadata as any)?.toolResults,
+          },
+          metadata: metadata
+        };
+      }
+      
+      // If we still don't have content, log the full response for debugging
+      console.error('Unable to extract content from vision API response:', response.data);
       return response.data;
     }
     
     throw new Error('Non-streaming text messages not supported. Use streamMessageWords instead.');
   },
 
-  async sendAdaptiveMessage(message: string, stream: boolean = true): Promise<ChatResponse> {
-    const response = await api.post<ChatResponse>('/personalizedAI/contextual-chat', {
-      message,
-      stream,
-    });
-    
-    return response.data;
-  },
 
   // Fresh streaming implementation (stable)
   async *streamMessage(prompt: string, endpoint: string = '/ai/adaptive-chat', attachments?: any[]): AsyncGenerator<string, void, unknown> {
@@ -520,100 +512,7 @@ export const UserAPI = {
   },
 };
 
-// Analytics API - Enhanced with Real Cognitive Engine
-export const AnalyticsAPI = {
-  async getPersonalInsights(): Promise<any> {
-    const response = await api.post('/analyticsLLM/insights', {
-      analysisType: 'personal_growth'
-    });
-    return response.data;
-  },
 
-  async getEmotionalAnalytics(): Promise<any> {
-    const response = await api.post('/analyticsLLM/weekly-digest', {
-      focusArea: 'emotional'
-    });
-    return response.data;
-  },
-
-  async getUBPMContext(): Promise<{success: boolean; data: UBPMContext}> {
-    const response = await api.get('/ubpm/context');
-    return response.data;
-  },
-
-  async getCollectiveSnapshot(): Promise<{success: boolean; snapshot: CollectiveSnapshot}> {
-    const response = await api.get('/analyticsEcosystem/ecosystem');
-    return response.data;
-  },
-
-  async getSystemMetrics(): Promise<{data: SystemMetrics}> {
-    const response = await api.get('/analyticsLLM/status');
-    return response.data;
-  },
-
-  // NEW: Get real user behavior profile from MongoDB
-  async getUserBehaviorProfile(): Promise<any> {
-    const response = await api.get('/ubpm/context');
-    return response.data;
-  },
-
-  // NEW: Get collective emotions data (the real chart data)
-  async getCollectiveEmotions(): Promise<any> {
-    const response = await api.get('/analyticsEcosystem/ecosystem');
-    return response.data;
-  },
-
-  // GOD-TIER: Real UBPM Cognitive Engine APIs
-  async getRealUBPMAnalysis(): Promise<any> {
-    const response = await api.post('/analyticsLLM/patterns', {
-      analysisType: 'behavioral'
-    });
-    return response.data;
-  },
-
-  async analyzeMessage(message: string): Promise<any> {
-    const response = await api.post('/analyticsLLM/insights', { 
-      message,
-      analysisType: 'message_analysis'
-    });
-    return response.data;
-  },
-
-  async getCognitivePatterns(): Promise<any> {
-    const response = await api.post('/analyticsLLM/patterns', {
-      analysisType: 'cognitive'
-    });
-    return response.data;
-  },
-};
-
-// Connections API
-export const ConnectionsAPI = {
-  async findConnections(connectionType: string = 'all'): Promise<any> {
-    const response = await api.post('/personalizedAI/find-connections', {
-      connectionType,
-      limit: 20,
-    });
-    return response.data;
-  },
-
-  async analyzeCompatibility(targetUserId: string): Promise<any> {
-    const response = await api.post('/personalizedAI/connection-insights', {
-      targetUserId,
-    });
-    return response.data;
-  },
-
-  async getEvents(): Promise<any> {
-    const response = await api.get('/personalizedAI/historical-insights');
-    return response.data;
-  },
-
-  async findEventMatches(filters: any): Promise<any> {
-    const response = await api.post('/analyticsLLM/recommendations', filters);
-    return response.data;
-  },
-};
 
 // Conversation API
 export const ConversationAPI = {

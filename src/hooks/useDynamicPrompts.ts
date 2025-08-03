@@ -93,16 +93,6 @@ export const useDynamicPrompts = ({
 
       setLastAnalyzedLength(messages.length);
       
-      // Log for debugging (remove in production)
-      if (__DEV__) {
-        console.log('📊 Context Analysis:', {
-          topics: newContext.topics,
-          emotionalTone: newContext.emotionalTone,
-          complexity: newContext.complexity,
-          userStyle: newContext.userStyle,
-          promptsGenerated: newPrompts.length
-        });
-      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze conversation';
@@ -153,14 +143,6 @@ export const useDynamicPrompts = ({
     // not the display text the user sees
     onPromptExecute(selectedPrompt.hiddenPrompt);
 
-    // Log for analytics (remove in production)
-    if (__DEV__) {
-      console.log('🚀 Prompt Executed:', {
-        displayText: selectedPrompt.displayText,
-        archetype: selectedPrompt.archetype,
-        category: selectedPrompt.category
-      });
-    }
   }, [prompts, onPromptExecute]);
 
   /**

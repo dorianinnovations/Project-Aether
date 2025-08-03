@@ -6,26 +6,13 @@ import { FlatList, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { ChatAPI, ConversationAPI } from '../services/api';
-
-interface Message {
-  id: string;
-  sender: 'user' | 'numina' | 'system';
-  message: string;
-  timestamp: string;
-  variant?: 'default' | 'streaming' | 'error' | 'tool';
-  metadata?: {
-    toolUsed?: string;
-    toolCalls?: any[];
-    confidence?: number;
-    processingTime?: number;
-  };
-}
+import { Message, MessageAttachment } from '../types';
 
 interface UseMessagesReturn {
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
-  handleSend: (inputText: string, attachments?: any[]) => Promise<void>;
+  handleSend: (inputText: string, attachments?: MessageAttachment[]) => Promise<void>;
   handleMessagePress: (message: Message) => Promise<void>;
   handleMessageLongPress: (message: Message) => void;
   handleConversationSelect: (conversation: any) => Promise<void>;
@@ -50,7 +37,7 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
     }
   }, [messages]);
 
-  const handleSend = async (inputText: string, attachments: any[] = []) => {
+  const handleSend = async (inputText: string, attachments: MessageAttachment[] = []) => {
     // Allow sending if there's text OR attachments
     if ((!inputText.trim() && attachments.length === 0) || isLoading) return;
 
@@ -59,19 +46,27 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
       onHideGreeting();
     }
 
-    // Prepare message text - use input text or default for photo-only messages
-    const messageText = inputText.trim() || (attachments.length > 0 ? "📸 Photo" : "");
+    // Prepare message text for display (keep user input as-is)
+    const displayText = inputText.trim();
+    
+    // Prepare prompt for API (include default prompt for attachment-only messages)
+    const apiPrompt = displayText || (attachments.length > 0 ? "Please analyze this content." : "");
     
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      message: messageText,
+      message: displayText,
       timestamp: new Date().toISOString(),
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
 
-    // Add user message - scroll will be handled by useEffect
+
+    // Add user message with optimistic update
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+
+    // Force immediate render cycle for better perceived performance
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     try {
       // Create streaming message
@@ -93,7 +88,7 @@ export const useMessages = (onHideGreeting?: () => void): UseMessagesReturn => {
       let wordCount = 0;
       let messageMetadata: any = undefined;
       
-      for await (const chunk of ChatAPI.streamMessageWords(messageText, '/ai/adaptive-chat', attachments)) {
+      for await (const chunk of ChatAPI.streamMessageWords(apiPrompt, '/ai/adaptive-chat', attachments)) {
         // Check if chunk is metadata object
         if (typeof chunk === 'object' && chunk !== null && 'metadata' in chunk) {
           messageMetadata = (chunk as any).metadata;

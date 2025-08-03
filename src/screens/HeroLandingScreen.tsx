@@ -110,10 +110,10 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     ]).start();
   };
 
-  const handleTryDemoButtonPress = () => {
+  const handleCreateAccountButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate to onboarding for demo
-    navigation.navigate("Onboarding");
+    // Navigate to sign up screen
+    navigation.navigate("SignUp");
     Animated.sequence([
       Animated.timing(demoButtonPressScale, {
         toValue: 0.95,
@@ -335,7 +335,7 @@ const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 >
                   <TouchableOpacity
                     style={{ width: "100%" }}
-                    onPress={handleTryDemoButtonPress}
+                    onPress={handleCreateAccountButtonPress}
                     activeOpacity={0.9}
                   >
                     <View

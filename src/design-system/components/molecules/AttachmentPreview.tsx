@@ -18,18 +18,9 @@ import { typography } from '../../tokens/typography';
 import { spacing, borderRadius } from '../../tokens/spacing';
 import { getNeumorphicStyle } from '../../tokens/shadows';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
+import { MessageAttachment } from '../../../types';
 
 const { width } = Dimensions.get('window');
-
-export interface MessageAttachment {
-  id: string;
-  type: 'image' | 'document';
-  name: string;
-  uri: string;
-  size: number;
-  uploadStatus: 'pending' | 'uploaded' | 'error';
-  mimeType?: string;
-}
 
 interface AttachmentPreviewProps {
   attachments: MessageAttachment[];

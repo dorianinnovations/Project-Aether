@@ -226,8 +226,11 @@ const Tooltip: React.FC<TooltipProps> = ({
     stopAllAnimations();
     
     if (visible) {
-      setIsPressed(false);
-      setIsAnimating(true);
+      // Use setTimeout to avoid state updates during render
+      setTimeout(() => {
+        setIsPressed(false);
+        setIsAnimating(true);
+      }, 0);
       
       // Reset pan position when showing
       panY.setValue(0);
@@ -258,7 +261,10 @@ const Tooltip: React.FC<TooltipProps> = ({
         setIsAnimating(false);
       });
     } else {
-      setIsAnimating(true);
+      // Use setTimeout to avoid state updates during render
+      setTimeout(() => {
+        setIsAnimating(true);
+      }, 0);
       
       const hideAnimation = Animated.parallel([
         Animated.timing(opacity, {

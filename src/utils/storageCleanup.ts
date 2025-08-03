@@ -12,7 +12,6 @@ export class StorageCleanup {
    */
   static async cleanupUserStorage(userId: string): Promise<void> {
     try {
-      console.log(`🧹 Cleaning up storage for user ${userId}`);
       
       // Get all storage keys
       const allKeys = await AsyncStorage.getAllKeys();
@@ -36,7 +35,6 @@ export class StorageCleanup {
         keysToRemove.map(key => AsyncStorage.removeItem(key))
       );
       
-      console.log(`✅ Storage cleanup completed for user ${userId}`);
     } catch (error) {
       console.error('❌ Storage cleanup error:', error);
     }
@@ -56,7 +54,6 @@ export class StorageCleanup {
         AsyncStorage.removeItem(userKeys.CACHE),
       ]);
       
-      console.log(`🗑️ Cleared user data for ${userId}`);
     } catch (error) {
       console.error('Error clearing user data:', error);
     }
@@ -92,7 +89,6 @@ export class StorageCleanup {
         allKeysToRemove.map(key => AsyncStorage.removeItem(key))
       );
       
-      console.log(`🚨 Emergency cleanup removed ${allKeysToRemove.length} keys`);
     } catch (error) {
       console.error('Emergency cleanup error:', error);
     }
@@ -114,11 +110,9 @@ export class StorageCleanup {
       );
       
       if (contaminatedKeys.length > 0) {
-        console.warn(`⚠️ Found ${contaminatedKeys.length} potentially contaminated keys:`, contaminatedKeys);
         return false;
       }
       
-      console.log('✅ Storage isolation verified - no contamination detected');
       return true;
     } catch (error) {
       console.error('Storage verification error:', error);

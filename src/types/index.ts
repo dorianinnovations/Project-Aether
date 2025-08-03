@@ -9,6 +9,18 @@ export interface User {
   updatedAt: string;
 }
 
+export interface MessageAttachment {
+  id: string;
+  type: 'image' | 'document';
+  name: string;
+  uri: string;
+  size: number;
+  width?: number;
+  height?: number;
+  uploadStatus?: 'pending' | 'uploaded' | 'error';
+  mimeType?: string;
+}
+
 export interface Message {
   id: string;
   sender: 'user' | 'numina' | 'system';
@@ -16,6 +28,7 @@ export interface Message {
   timestamp: string;
   variant?: 'default' | 'streaming' | 'error' | 'tool';
   metadata?: MessageMetadata;
+  attachments?: MessageAttachment[];
 }
 
 export interface ToolCall {
@@ -31,6 +44,13 @@ export interface MessageMetadata {
   toolCalls?: ToolCall[];
   confidence?: number;
   processingTime?: number;
+  searchResults?: boolean;
+  query?: string;
+  sources?: Array<{
+    title: string;
+    url: string;
+    domain: string;
+  }>;
 }
 
 export interface Conversation {

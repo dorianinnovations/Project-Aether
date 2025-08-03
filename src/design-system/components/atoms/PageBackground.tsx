@@ -36,8 +36,8 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
   const darkGrey = '#0F0F0F';
 
   const getGradientColors = (): string[] => {
-    // If plain white background is enabled and it's light theme, use pure white
-    if (settings.plainWhiteBackground && theme === 'light') {
+    // If white background is selected and it's light theme, use pure white
+    if (settings.backgroundType === 'white' && theme === 'light') {
       return ['#ffffff', '#ffffff', '#ffffff'];
     }
 
@@ -84,8 +84,8 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
     }
   };
 
-  // For light mode with plain white background, use solid white
-  if (theme === 'light' && settings.plainWhiteBackground) {
+  // For light mode with white background selected, use solid white
+  if (theme === 'light' && settings.backgroundType === 'white') {
     return (
       <View 
         style={[

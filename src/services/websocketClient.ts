@@ -26,19 +26,53 @@ class WebSocketClient {
   private maxReconnectAttempts = 5;
   private eventListeners: Map<keyof WebSocketEvents, Function[]> = new Map();
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private isAuthenticatedUser = false;
 
   async connect(): Promise<void> {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await AsyncStorage.getItem('@numina_auth_token');
       if (!token) {
-        console.warn('No authentication token found, connecting without auth');
+        console.warn('No authentication token found, skipping WebSocket connection');
+        this.isAuthenticatedUser = false;
+        return; // Don't throw error, just skip connection
       }
 
-      // Use native WebSocket connection to the server
-      const serverUrl = 'wss://server-a7od.onrender.com'; // WebSocket URL
+      this.isAuthenticatedUser = true;
+
+      // First, let's try to establish connection via polling to get the session ID
+      const pollUrl = `https://server-a7od.onrender.com/socket.io/?EIO=4&transport=polling`;
       
-      this.ws = new WebSocket(serverUrl);
-      this.setupEventHandlers();
+      try {
+        // Try to get session ID from polling endpoint
+        const pollResponse = await fetch(pollUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!pollResponse.ok) {
+          throw new Error(`HTTP ${pollResponse.status}: ${pollResponse.statusText}`);
+        }
+        
+        const pollData = await pollResponse.text();
+        
+        // Extract session ID from the response (format: "97:0{"sid":"...","upgrades":["websocket"]...}")
+        const sidMatch = pollData.match(/"sid":"([^"]+)"/);
+        const sessionId = sidMatch ? sidMatch[1] : null;
+        
+        if (!sessionId) {
+          throw new Error('Could not extract session ID from polling response');
+        }
+        
+        // Now connect via WebSocket with the session ID
+        const serverUrl = `wss://server-a7od.onrender.com/socket.io/?EIO=4&transport=websocket&sid=${sessionId}`;
+        this.ws = new WebSocket(serverUrl);
+        this.setupEventHandlers();
+      } catch (pollError) {
+        console.error('Failed to establish Socket.IO handshake:', pollError);
+        const errorMessage = pollError instanceof Error ? pollError.message : String(pollError);
+        throw new Error('Socket.IO handshake failed: ' + errorMessage);
+      }
       
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -49,7 +83,6 @@ class WebSocketClient {
           clearTimeout(timeout);
           this.isConnected = true;
           this.reconnectAttempts = 0;
-          console.log('WebSocket connected successfully');
           
           // Send auth message if token available
           if (token) {
@@ -80,7 +113,6 @@ class WebSocketClient {
     this.ws.addEventListener('open', () => {
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      console.log('WebSocket connected');
       
       // Join global posts room
       this.send('join_community', { community: 'global' });
@@ -88,7 +120,6 @@ class WebSocketClient {
 
     this.ws.addEventListener('close', (event) => {
       this.isConnected = false;
-      console.log('WebSocket disconnected:', event.reason);
       this.attemptReconnect();
     });
 
@@ -141,7 +172,6 @@ class WebSocketClient {
           this.emitToListeners('connected', data);
           break;
         default:
-          console.log('Unknown Socket.IO event:', eventName, data);
       }
     } else {
       // Handle regular JSON message format
@@ -176,7 +206,6 @@ class WebSocketClient {
           this.emitToListeners('connected', data);
           break;
         default:
-          console.log('Unknown message type:', type);
       }
     }
   }
@@ -194,7 +223,6 @@ class WebSocketClient {
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 5000);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
-      console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       this.connect().catch(() => {
         // Reconnection failed, will try again
       });
@@ -280,6 +308,24 @@ class WebSocketClient {
 
   get connected(): boolean {
     return this.isConnected;
+  }
+
+  get isAuthenticated(): boolean {
+    return this.isAuthenticatedUser;
+  }
+
+  // Safe connect method that only attempts connection for authenticated users
+  async safeConnect(): Promise<void> {
+    try {
+      const token = await AsyncStorage.getItem('@numina_auth_token');
+      if (token) {
+        await this.connect();
+      } else {
+      }
+    } catch (error) {
+      console.warn('Safe WebSocket connection failed:', error);
+      // Don't throw - app should continue working without WebSocket
+    }
   }
 }
 

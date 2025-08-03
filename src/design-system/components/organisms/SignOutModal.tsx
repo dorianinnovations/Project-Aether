@@ -92,44 +92,39 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     setIsAnimating(true);
     resetAnimations();
     
-    // Background fade in
-    Animated.timing(backgroundOpacity, {
-      toValue: 1,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
-    
-    // Modal entrance with spring effect
+    // Much faster background and modal entrance
     Animated.parallel([
-      Animated.spring(modalScale, {
+      Animated.timing(backgroundOpacity, {
         toValue: 1,
-        tension: 100,
-        friction: 8,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalScale, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(modalOpacity, {
         toValue: 1,
-        duration: 200,
+        duration: 100,
         useNativeDriver: true,
         easing: Easing.out(Easing.quad),
       }),
-      Animated.spring(modalTranslateY, {
+      Animated.timing(modalTranslateY, {
         toValue: 0,
-        tension: 100,
-        friction: 8,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
+      // Icon animates with modal for speed
+      ...(showIcon ? [Animated.timing(iconScale, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      })] : []),
     ]).start(() => {
-      // Icon bounce animation - faster and springier
-      if (showIcon) {
-        Animated.spring(iconScale, {
-          toValue: 1,
-          tension: 200,
-          friction: 6,
-          useNativeDriver: true,
-        }).start();
-      }
-      
       setIsAnimating(false);
     });
   }, [isAnimating, backgroundOpacity, modalScale, modalOpacity, modalTranslateY, iconScale, showIcon]);
@@ -140,30 +135,30 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     
     setIsAnimating(true);
     
-    // Fast exit animation
+    // Ultra-fast exit animation
     Animated.parallel([
       Animated.timing(backgroundOpacity, {
         toValue: 0,
-        duration: 120,
+        duration: 60,
         useNativeDriver: true,
       }),
       Animated.timing(modalScale, {
-        toValue: 0.9,
-        duration: 120,
+        toValue: 0.95,
+        duration: 60,
         useNativeDriver: true,
-        easing: Easing.in(Easing.quad),
+        easing: Easing.in(Easing.cubic),
       }),
       Animated.timing(modalOpacity, {
         toValue: 0,
-        duration: 120,
+        duration: 60,
         useNativeDriver: true,
-        easing: Easing.in(Easing.quad),
+        easing: Easing.in(Easing.cubic),
       }),
       Animated.timing(modalTranslateY, {
-        toValue: 30,
-        duration: 120,
+        toValue: 20,
+        duration: 60,
         useNativeDriver: true,
-        easing: Easing.in(Easing.quad),
+        easing: Easing.in(Easing.cubic),
       }),
     ]).start(() => {
       resetAnimations();
@@ -210,13 +205,13 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     
     Animated.sequence([
       Animated.timing(cancelButtonScale, {
-        toValue: 0.95,
-        duration: 50,
+        toValue: 0.96,
+        duration: 30,
         useNativeDriver: true,
       }),
       Animated.timing(cancelButtonScale, {
         toValue: 1,
-        duration: 100,
+        duration: 50,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -232,13 +227,13 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
     
     Animated.sequence([
       Animated.timing(confirmButtonScale, {
-        toValue: 0.95,
-        duration: 50,
+        toValue: 0.96,
+        duration: 30,
         useNativeDriver: true,
       }),
       Animated.timing(confirmButtonScale, {
         toValue: 1,
-        duration: 100,
+        duration: 50,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -288,7 +283,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
       ]}>
         <IconComponent
           name={iconName as any}
-          size={24}
+          size={20}
           color={iconColor}
         />
       </Animated.View>
@@ -455,29 +450,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
   },
   modal: {
-    width: Math.min(screenWidth - spacing[8], 320),
-    borderRadius: 20,
-    padding: spacing[6],
+    width: Math.min(screenWidth - spacing[8], 280),
+    borderRadius: 16,
+    padding: spacing[4],
     alignItems: 'center',
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing[4],
+    marginBottom: spacing[3],
     borderWidth: 1,
   },
   title: {
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: spacing[2],
+    marginBottom: spacing[1],
   },
   message: {
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing[6],
+    lineHeight: 20,
+    marginBottom: spacing[4],
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -486,9 +481,9 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
+    borderRadius: 10,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
   },
   confirmButton: {
     // Additional styles for confirm button

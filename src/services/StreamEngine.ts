@@ -7,7 +7,7 @@
 
 import { TokenManager } from './api';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://server-a7od.onrender.com';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 export interface StreamChunk {
   text: string;
@@ -24,20 +24,51 @@ export class StreamEngine {
     attachments?: any[]
   ): AsyncGenerator<string | StreamChunk, void, unknown> {
     
-    // For photo attachments, fall back to non-streaming (as per backend)
+    // For attachments, fall back to non-streaming (as per backend)
     if (attachments && attachments.length > 0) {
-      const { ChatAPI } = await import('./api');
-      const response = await ChatAPI.sendMessage(prompt, false, attachments);
-      // Split response into words for consistent behavior
-      const content = response.content || '';
-      const words = content.split(/(\s+)/);
-      for (const word of words) {
-        if (word.trim()) {
-          yield word;
-          await new Promise(resolve => setTimeout(resolve, 100));
+      try {
+        const { ChatAPI } = await import('./api');
+        const response = await ChatAPI.sendMessage(prompt, false, attachments);
+        
+        // Extract content from various response formats
+        const content = response.content || 
+                       response.data?.response || 
+                       response.data?.content ||
+                       response.response || 
+                       '';
+        
+        if (!content || content.trim() === '') {
+          // Log response for debugging
+          console.warn('Empty vision response:', JSON.stringify(response, null, 2));
+          yield 'I received your image but the vision analysis returned an empty response. Please try sending the image again or check if the image is clear and properly formatted.';
+          return;
         }
+        
+        // Split response into words for consistent behavior with streaming
+        const words = content.split(/(\s+)/);
+        for (const word of words) {
+          if (word.trim()) {
+            yield word;
+            await new Promise(resolve => setTimeout(resolve, 80)); // Slightly faster for better UX
+          }
+        }
+        
+        // Yield metadata if available from various response structures
+        const responseMetadata = response.metadata || 
+                                (response.data as any)?.metadata ||
+                                (response.data as any)?.toolResults ||
+                                (response.data as any)?.data?.toolResults;
+        if (responseMetadata) {
+          yield { text: '', metadata: responseMetadata };
+        }
+        return;
+        
+      } catch (error) {
+        console.error('Vision API error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        yield `I encountered an error while processing your image: ${errorMessage}. Please try again.`;
+        return;
       }
-      return;
     }
     
     const token = await TokenManager.getToken();

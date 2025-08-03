@@ -8,7 +8,11 @@ export interface Post {
   author: string;
   authorArchetype?: string;
   time: string;
-  engagement: string;
+  engagement: string; // Legacy field
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+  userHasLiked: boolean;
   badge: string;
   image?: string;
   comments: Comment[];
@@ -113,6 +117,22 @@ export class PostsAPI {
    */
   static async deleteComment(postId: string, commentId: string): Promise<{ message: string }> {
     const response = await api.delete(`/posts/${postId}/comments/${commentId}`);
+    return response.data;
+  }
+
+  /**
+   * Like or unlike a post
+   */
+  static async toggleLike(postId: string): Promise<{ message: string; liked: boolean; likesCount: number }> {
+    const response = await api.post(`/posts/${postId}/like`);
+    return response.data;
+  }
+
+  /**
+   * Share a post (increment share count)
+   */
+  static async sharePost(postId: string): Promise<{ message: string; sharesCount: number }> {
+    const response = await api.post(`/posts/${postId}/share`);
     return response.data;
   }
 }

@@ -32,15 +32,13 @@ const { width } = Dimensions.get('window');
 
 // Import the centralized LottieLoader
 import { LottieLoader } from '../atoms';
-import { AttachmentPreview, MessageAttachment as AttachmentType } from './AttachmentPreview';
-
-// Use the AttachmentType from AttachmentPreview component
-type MessageAttachment = AttachmentType;
+import { AttachmentPreview } from './AttachmentPreview';
+import { MessageAttachment } from '../../../types';
 
 interface ChatInputProps {
   value: string;
   onChangeText: (text: string) => void;
-  onSend: (attachments?: MessageAttachment[]) => void;
+  onSend: () => void;
   onVoiceStart?: () => void;
   onVoiceEnd?: () => void;
   placeholder?: string;
@@ -185,8 +183,19 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
       }).start();
     });
 
-    onSend(attachments);
-  }, [canSend, sendButtonScale, onSend, attachments]);
+    onSend();
+    
+    // Close attachment buttons after sending
+    if (attachmentButtonsVisible) {
+      setAttachmentButtonsVisible(false);
+      Animated.spring(attachmentButtonsAnim, {
+        toValue: 0,
+        useNativeDriver: false,
+        tension: 220,
+        friction: 10,
+      }).start();
+    }
+  }, [canSend, sendButtonScale, onSend, attachmentButtonsVisible, attachmentButtonsAnim]);
 
   const handleRemoveAttachment = (attachmentId: string) => {
     if (onAttachmentsChange) {
@@ -275,12 +284,12 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
 
     const newAttachment: MessageAttachment = {
       id: Date.now().toString(),
-      type: asset.type?.includes('image') ? 'image' : 'document',
-      name: asset.name || `attachment_${Date.now()}`,
+      type: asset.type?.includes('image') || asset.mediaType?.includes('image') ? 'image' : 'document',
+      name: asset.name || asset.fileName || `attachment_${Date.now()}`,
       uri: asset.uri,
-      size: asset.fileSize || 0,
-      uploadStatus: 'pending',
-      mimeType: asset.mimeType || 'application/octet-stream',
+      size: asset.fileSize || asset.size || 0,
+      uploadStatus: 'uploaded', // Files are ready to send immediately 
+      mimeType: asset.mimeType || asset.type || 'application/octet-stream',
     };
 
     if (onAttachmentsChange) {
@@ -514,7 +523,7 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                 getNeumorphicStyle('elevated', theme),
                 {
                   backgroundColor: canSend
-                    ? getUserMessageColor(nextMessageIndex, theme, colorfulBubblesEnabled)
+                    ? getUserMessageColor(nextMessageIndex, theme)
                     : themeColors.surface,
                   transform: [{ scale: sendButtonScale }],
                 }
@@ -523,9 +532,9 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
                   <LottieLoader size={40} />
                 ) : (
                   <FontAwesome5
-                    name={hasImageOnlyMessage ? "eye" : "arrow-up"}
+                    name="arrow-up"
                     size={18}
-                    color={canSend ? (theme === 'dark' ? '#4CB8FF' : '#5CC7E8') : themeColors.textMuted}
+                    color={canSend ? (theme === 'dark' ? '#ffffff' : '#444444') : themeColors.textMuted}
                   />
                 )}
               </Animated.View>
@@ -657,15 +666,6 @@ export const EnhancedChatInput: React.FC<ChatInputProps> = ({
         theme={theme}
       />
 
-      {/* Disclaimer Text */}
-      <View style={styles.disclaimerContainer}>
-        <Text style={[
-          styles.disclaimerText,
-          { color: themeColors.textMuted }
-        ]}>
-          AI can make mistakes. Always verify important information.
-        </Text>
-      </View>
     </View>
     </PanGestureHandler>
   );

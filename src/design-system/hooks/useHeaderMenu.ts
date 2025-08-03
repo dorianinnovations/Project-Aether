@@ -23,6 +23,9 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
     setShowHeaderMenu(false);
     
     switch (key) {
+      case 'back':
+        navigation.goBack();
+        break;
       case 'profile':
         if (screenName !== 'profile') {
           (navigation as any).navigate('Profile');
@@ -31,12 +34,6 @@ export const useHeaderMenu = (options: UseHeaderMenuOptions = {}) => {
       case 'chat':
         if (screenName !== 'chat') {
           (navigation as any).navigate('Chat');
-        }
-        break;
-      case 'dashboard':
-      case 'engine':
-        if (screenName !== 'engine' && screenName !== 'dashboard') {
-          (navigation as any).navigate('Engine');
         }
         break;
       case 'social':

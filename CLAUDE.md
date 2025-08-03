@@ -59,6 +59,7 @@ This codebase follows **atomic design principles** with a sophisticated design s
 - **Auth Screens**: SignIn/SignUp with comprehensive validation and error handling  
 - **InsightsScreen.tsx**: Analytics dashboard with emotional metrics visualization
 - **ProfileScreen.tsx**: User profile management with avatar upload functionality
+- **SocialScreen** (Modular): Advanced social platform with modular architecture (see Social Architecture section)
 
 #### Enhanced Components
 - **EnhancedMessageBubble**: Sophisticated message rendering with markdown, themes, and animations
@@ -88,6 +89,49 @@ This codebase follows **atomic design principles** with a sophisticated design s
 - **Bundle Optimization**: Code splitting and memory leak prevention
 - **Animation Performance**: Native driver usage for 60fps animations
 
+### Social Architecture (Modular Design)
+The social platform has been architected using a modular approach for maximum scalability and maintainability:
+
+#### Directory Structure
+```
+src/screens/social/
+├── components/           # Reusable UI components (Atomic Design)
+│   ├── TabPills.tsx     # Tab navigation molecule  
+│   ├── PostCard.tsx     # Individual post display molecule
+│   ├── PostsFeed.tsx    # Posts list organism
+│   ├── CreatePostModal.tsx # Post creation modal organism
+│   ├── CommunityChip.tsx   # Community selection atom
+│   └── index.ts         # Component exports
+├── hooks/               # Custom React hooks for data management
+│   ├── useSocialData.ts    # Posts loading, caching, auto-refresh
+│   ├── useRealTimeUpdates.ts # Server-Sent Events integration
+│   ├── usePostActions.ts   # Like/share/comment with optimistic updates
+│   └── index.ts         # Hook exports
+├── types/               # TypeScript interfaces
+├── constants/           # Static data (communities, colors, tabs)
+├── utils/               # Helper functions (color getters, filtering)
+└── SocialScreen.tsx     # Main container (220 lines vs original 1,521)
+```
+
+#### Key Architectural Benefits
+- **Separation of Concerns**: Business logic isolated in custom hooks
+- **Component Reusability**: Atomic design enables easy composition
+- **Type Safety**: Comprehensive TypeScript interfaces throughout
+- **Real-time Updates**: SSE integration with optimistic UI updates
+- **Performance**: Better code splitting and render optimization
+- **Scalability**: Easy to add features without touching existing code
+
+#### Social Features
+- **Real-time Feed**: Server-Sent Events for live post updates
+- **Post Management**: Create, like, share, comment with optimistic updates
+- **Community System**: Categorized posts with color-coded communities
+- **Tab Navigation**: Feed, Groups, Strategize, Collaborate sections
+- **Search & Filter**: Real-time post filtering and search
+- **Engagement Actions**: Like, comment, share with haptic feedback
+
+#### Migration Pattern
+The original monolithic `ConnectionsScreen.tsx` (1,521 lines) was refactored into the modular architecture while maintaining backward compatibility through re-exports. This pattern can be applied to other large components.
+
 ## Critical Notes for Development
 
 ### API Service Usage
@@ -108,6 +152,17 @@ Always use the centralized API service in `src/services/api.ts`. It handles:
 - All chat functionality integrates with the conversation management system
 - Message rendering supports markdown with custom styling
 - Maintain conversation history synchronization with backend
+
+### Social Platform Development
+When working with the social platform (`src/screens/social/`):
+- **Use Custom Hooks**: Leverage `useSocialData`, `useRealTimeUpdates`, and `usePostActions` for data management
+- **Component Composition**: Build new features by composing existing atoms and molecules
+- **Real-time Integration**: Utilize Server-Sent Events for live updates via `useRealTimeUpdates`
+- **Optimistic Updates**: Implement optimistic UI updates for better user experience
+- **Type Safety**: All components must use the TypeScript interfaces from `types/index.ts`
+- **Constants**: Use predefined colors, communities, and configurations from `constants/`
+- **Modular Architecture**: Keep components focused and single-responsibility
+- **Performance**: Consider code splitting and lazy loading for new organisms
 
 ### Code Quality Requirements
 - All code must pass TypeScript strict mode compilation

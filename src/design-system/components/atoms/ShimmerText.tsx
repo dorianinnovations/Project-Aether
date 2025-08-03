@@ -17,6 +17,7 @@ interface ShimmerTextProps {
   customShimmerColor?: string;
   waveWidth?: 'narrow' | 'normal' | 'wide';
   colorMode?: 'static' | 'pastel-cycle';
+  animationMode?: 'loop' | 'greeting-sequence';
 }
 
 export const ShimmerText: React.FC<ShimmerTextProps> = ({
@@ -28,7 +29,8 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
   intensity = 'normal',
   customShimmerColor,
   waveWidth = 'normal',
-  colorMode = 'static'
+  colorMode = 'static',
+  animationMode = 'loop'
 }) => {
   const { theme } = useTheme();
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -63,16 +65,48 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
     let timeoutId: NodeJS.Timeout | null = null;
 
     const animate = () => {
-      animatedValue.setValue(0);
-      animationRef = Animated.loop(
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 4000, // Slower animation for more subtle effect
-          useNativeDriver: false,
-        }),
-        { iterations: -1 }
-      );
-      animationRef.start();
+      if (animationMode === 'greeting-sequence') {
+        // Custom greeting sequence: 2.6s forward → 0.5s pause → 0.5s reverse → 7s pause
+        const runGreetingSequence = () => {
+          animatedValue.setValue(0);
+          
+          // Forward animation (2.6s) - go to 1.2 so shimmer fully exits text
+          Animated.timing(animatedValue, {
+            toValue: 1.2,
+            duration: 2600,
+            useNativeDriver: false,
+          }).start(() => {
+            // 0.5s pause, then reverse
+            setTimeout(() => {
+              // Reverse animation (0.5s)
+              Animated.timing(animatedValue, {
+                toValue: 0,
+                duration: 500,
+                useNativeDriver: false,
+              }).start(() => {
+                // 7s pause before repeating
+                setTimeout(() => {
+                  runGreetingSequence();
+                }, 7000);
+              });
+            }, 500);
+          });
+        };
+        
+        runGreetingSequence();
+      } else {
+        // Default loop animation
+        animatedValue.setValue(0);
+        animationRef = Animated.loop(
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 4000, // Slower animation for more subtle effect
+            useNativeDriver: false,
+          }),
+          { iterations: -1 }
+        );
+        animationRef.start();
+      }
     };
     
     // Start animation after initial delay
@@ -83,7 +117,7 @@ export const ShimmerText: React.FC<ShimmerTextProps> = ({
       if (timeoutId) clearTimeout(timeoutId);
       if (animationRef) animationRef.stop();
     };
-  }, [animatedValue, duration, enabled, delay]);
+  }, [animatedValue, duration, enabled, delay, animationMode]);
 
   if (!enabled) {
     return <Text style={style}>{children}</Text>;

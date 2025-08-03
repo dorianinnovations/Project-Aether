@@ -45,7 +45,7 @@ import { typography } from '../design-system/tokens/typography';
 import { spacing } from '../design-system/tokens/spacing';
 import { getGlassmorphicStyle } from '../design-system/tokens/glassmorphism';
 import Icon from '../design-system/components/atoms/Icon';
-import ConversationSkeleton from '../design-system/components/atoms/ConversationSkeleton';
+import LottieView from 'lottie-react-native';
 
 // Services
 import { ConversationAPI } from '../services/api';
@@ -962,12 +962,13 @@ const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   const renderPageContent = (pageId: string) => {
     if (isLoading) {
       return (
-        <View style={styles.conversationsList}>
-          <View style={styles.conversationsContent}>
-            {[...Array(6)].map((_, index) => (
-              <ConversationSkeleton key={index} />
-            ))}
-          </View>
+        <View style={styles.loadingContainer}>
+          <LottieView
+            source={require('../../assets/NuminaSpinner.json')}
+            autoPlay
+            loop
+            style={styles.lottieAnimation}
+          />
         </View>
       );
     }
@@ -1611,6 +1612,15 @@ const styles = StyleSheet.create({
   },
 
   // States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lottieAnimation: {
+    width: 60,
+    height: 60,
+  },
   loadingState: {
     flex: 1,
     justifyContent: 'center',

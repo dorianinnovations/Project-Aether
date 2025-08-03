@@ -36,6 +36,12 @@ interface MenuAction {
 
 const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
   { 
+    icon: <Feather name="arrow-left" size={16} color={getIconColor('profile', theme)} />, 
+    label: 'Back', 
+    key: 'back', 
+    requiresAuth: false 
+  },
+  { 
     icon: <Feather name="user" size={16} color={getIconColor('profile', theme)} />, 
     label: 'Profile', 
     key: 'profile', 
@@ -45,12 +51,6 @@ const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
     icon: <MaterialCommunityIcons name="chat-outline" size={16} color={getIconColor('chat', theme)} />, 
     label: 'Chat', 
     key: 'chat', 
-    requiresAuth: false 
-  },
-  { 
-    icon: <Feather name="bar-chart-2" size={16} color={getIconColor('dashboard', theme)} />, 
-    label: 'Engine', 
-    key: 'dashboard', 
     requiresAuth: false 
   },
   { 
@@ -74,15 +74,22 @@ const getAllMenuActions = (theme: 'light' | 'dark'): MenuAction[] => [
   },
 ];
 
-const getMenuActions = (theme: 'light' | 'dark', showAuthOptions: boolean = true): MenuAction[] => {
+const getMenuActions = (theme: 'light' | 'dark', showAuthOptions: boolean = true, showBackButton: boolean = false): MenuAction[] => {
   const allActions = getAllMenuActions(theme);
+  
+  let filteredActions = allActions;
+  
+  // Filter out back button if not needed
+  if (!showBackButton) {
+    filteredActions = filteredActions.filter(action => action.key !== 'back');
+  }
   
   if (showAuthOptions) {
     // Show all actions including auth actions when showAuthOptions is true
-    return allActions;
+    return filteredActions;
   } else {
     // Hide auth-required actions when showAuthOptions is false
-    return allActions.filter(action => !action.requiresAuth && !action.isAuthAction);
+    return filteredActions.filter(action => !action.requiresAuth && !action.isAuthAction);
   }
 };
 
@@ -92,6 +99,7 @@ interface HeaderMenuProps {
   onAction: (key: string) => void;
   menuButtonPosition?: { x: number; y: number; width: number; height: number };
   showAuthOptions?: boolean;
+  showBackButton?: boolean;
 }
 
 export const HeaderMenu: React.FC<HeaderMenuProps> = ({ 
@@ -100,9 +108,10 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   onAction, 
   menuButtonPosition,
   showAuthOptions = true,
+  showBackButton = false,
 }) => {
   const { theme, colors, toggleTheme } = useTheme();
-  const menuActions = getMenuActions(theme, showAuthOptions);
+  const menuActions = getMenuActions(theme, showAuthOptions, showBackButton);
   
   // State to prevent multiple rapid presses
   const [isAnimating, setIsAnimating] = useState(false);
@@ -113,15 +122,15 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(-8)).current;
   
-  // Item stagger animations (including theme selector)
-  const itemAnims = useRef([...menuActions, { key: 'theme_selector' }].map(() => ({
+  // Item stagger animations (including theme selector) - use fixed array length
+  const itemAnims = useRef(Array.from({ length: 10 }, () => ({
     opacity: new Animated.Value(0),
     translateY: new Animated.Value(10),
     scale: new Animated.Value(0.9),
   }))).current;
   
-  // Button press animations
-  const buttonAnims = useRef(menuActions.map(() => ({
+  // Button press animations - use fixed array length
+  const buttonAnims = useRef(Array.from({ length: 9 }, () => ({
     scale: new Animated.Value(1),
     opacity: new Animated.Value(1),
   }))).current;
@@ -145,7 +154,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     
     setIsAnimating(false);
     setPressedIndex(null);
-  }, [scaleAnim, opacityAnim, translateYAnim, itemAnims, buttonAnims]);
+  }, []);
 
   // Show animation
   const showMenu = useCallback(() => {
@@ -175,8 +184,8 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Gentle ladder falling haptic sequence
-      [...menuActions, { key: 'theme_selector' }].forEach((_, index) => {
+      // Gentle ladder falling haptic sequence - use fixed count
+      Array.from({ length: 10 }).forEach((_, index) => {
         setTimeout(() => {
           if (index < 3) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -219,7 +228,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         setIsAnimating(false);
       });
     });
-  }, [isAnimating, resetAnimations, scaleAnim, opacityAnim, translateYAnim, itemAnims]);
+  }, []);
 
   // Hide animation
   const hideMenu = useCallback(() => {
@@ -259,7 +268,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     ]).start(() => {
       resetAnimations();
     });
-  }, [isAnimating, scaleAnim, opacityAnim, translateYAnim, itemAnims, resetAnimations]);
+  }, []);
 
   // Effect to handle visibility changes
   useEffect(() => {
@@ -268,14 +277,14 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     } else {
       hideMenu();
     }
-  }, [visible, showMenu, hideMenu]);
+  }, [visible]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       resetAnimations();
     };
-  }, [resetAnimations]);
+  }, []);
 
   // Button press handler
   const handleMenuButtonPress = useCallback((actionKey: string, index: number) => {
@@ -286,8 +295,13 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     // Haptic feedback
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    const scaleAnim = buttonAnims[index].scale;
-    const opacityAnim = buttonAnims[index].opacity;
+    // Find the correct index in the button animations array (limited to available actions)
+    const menuActions = getMenuActions(theme, showAuthOptions, showBackButton);
+    const fullIndex = menuActions.findIndex(action => action.key === actionKey);
+    if (fullIndex === -1 || !buttonAnims[fullIndex]) return;
+    
+    const scaleAnim = buttonAnims[fullIndex].scale;
+    const opacityAnim = buttonAnims[fullIndex].opacity;
     
     // Fast press animation
     Animated.sequence([
@@ -326,17 +340,25 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
       
       onAction(actionKey);
     });
-  }, [isAnimating, pressedIndex, buttonAnims, onAction, toggleTheme]);
+  }, [onAction]);
 
   if (!visible) return null;
 
-  // Calculate position based on menu button
+  // Calculate position based on menu button and header layout
   const menuWidth = 280;
-  const rightMargin = 1;
-  const topMargin = 80;
   
-  const menuRight = rightMargin + 20;
-  const menuTop = topMargin + 50;
+  let menuRight, menuTop;
+  
+  // Normal positioning for other screens
+  const rightMargin = 24;
+  const topMargin = 120;
+  
+  menuRight = menuButtonPosition?.x 
+    ? screenWidth - menuButtonPosition.x - menuButtonPosition.width + 10
+    : rightMargin;
+  menuTop = menuButtonPosition?.y 
+    ? menuButtonPosition.y + menuButtonPosition.height + 10
+    : topMargin;
 
   return (
     <Modal
@@ -374,8 +396,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
               borderColor: theme === 'light' ? designTokens.borders.light.default : designTokens.borders.dark.default,
               ...getHeaderMenuShadow(theme),
               position: 'absolute',
-              top: menuTop,
-              right: menuRight,
+              top: menuTop, right: menuRight,
               width: menuWidth,
               opacity: opacityAnim,
               transform: [
@@ -394,7 +415,9 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         ]} />
         
         <View style={styles.menuContent}>
-          {menuActions.map((action, index) => (
+          {menuActions.map((action, index) => {
+            const fullIndex = index; // Use the current index directly
+            return (
             <Animated.View
               key={action.key}
               style={[
@@ -406,10 +429,10 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
                   borderColor: theme === 'dark' 
                     ? 'rgba(255,255,255,0.1)' 
                     : 'rgba(0, 0, 0, 0.08)',
-                  opacity: itemAnims[index].opacity,
+                  opacity: itemAnims[fullIndex]?.opacity || 1,
                   transform: [
-                    { translateY: itemAnims[index].translateY },
-                    { scale: Animated.multiply(itemAnims[index].scale, buttonAnims[index].scale) },
+                    { translateY: itemAnims[fullIndex]?.translateY || 0 },
+                    { scale: Animated.multiply(itemAnims[fullIndex]?.scale || 1, buttonAnims[fullIndex]?.scale || 1) },
                   ],
                 }
               ]}
@@ -432,7 +455,8 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-          ))}
+            );
+          })}
           
           {/* Theme Selector as Menu Button */}
           <Animated.View
@@ -480,7 +504,7 @@ const styles = StyleSheet.create({
   arrow: {
     position: 'absolute',
     top: -8,
-    right: 31,
+    right: 35,
     width: 0,
     height: 0,
     borderLeftWidth: 8,

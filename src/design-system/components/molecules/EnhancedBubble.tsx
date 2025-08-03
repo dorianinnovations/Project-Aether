@@ -15,6 +15,8 @@ import {
   Dimensions,
   Vibration,
   Platform,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -25,33 +27,18 @@ import { typography } from '../../tokens/typography';
 import { spacing, borderRadius } from '../../tokens/spacing';
 import { getNeumorphicStyle } from '../../tokens/shadows';
 import { getGlassmorphicStyle } from '../../tokens/glassmorphism';
-import { ToolCall } from '../../../types';
+import { ToolCall, Message, MessageAttachment } from '../../../types';
 import BasicMarkdown from '../atoms/BasicMarkdown';
+import { PhotoPreview } from './PhotoPreview';
 
 const { width } = Dimensions.get('window');
 
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'numina' | 'system';
-  timestamp: string;
-  variant?: 'default' | 'streaming' | 'error' | 'tool';
+interface ExtendedMessage extends Omit<Message, 'message'> {
+  text?: string;
+  message?: string;
   mood?: string;
-  attachments?: MessageAttachment[];
   isSystem?: boolean;
-  metadata?: {
-    toolUsed?: string;
-    toolCalls?: ToolCall[];
-    confidence?: number;
-    processingTime?: number;
-    searchResults?: boolean;
-    query?: string;
-    sources?: Array<{
-      title: string;
-      url: string;
-      domain: string;
-    }>;
-  };
+  isStreaming?: boolean;
   personalityContext?: {
     communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
     emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
@@ -66,24 +53,12 @@ interface Message {
   };
 }
 
-interface MessageAttachment {
-  id: string;
-  type: 'image' | 'document';
-  name: string;
-  uri: string;
-  size: number;
-  uploadStatus: 'pending' | 'uploaded' | 'error';
-  mimeType?: string;
-}
-
 interface AnimatedMessageBubbleProps {
-  message: Message;
+  message: ExtendedMessage;
   index: number;
-  onLongPress?: (message: Message) => void;
   onSpeakMessage?: (text: string) => void;
   theme?: 'light' | 'dark';
   messageIndex?: number;
-  colorfulBubblesEnabled?: boolean;
   onCopyMessage?: (text: string) => void;
   onReportMessage?: (message: Message) => void;
   onShareMessage?: (message: Message) => void;
@@ -96,8 +71,8 @@ const StreamingText: React.FC<{
   isStreaming?: boolean;
 }> = memo(({ text, theme, isStreaming = false }) => {
   const baseTextStyle = {
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 24,
     letterSpacing: -0.1,
     fontFamily: 'Nunito-Regular',
     fontWeight: '400' as '400',
@@ -167,7 +142,7 @@ const StreamContent: React.FC<{
       {/* Show search results metadata for streaming search responses */}
       {metadata?.searchResults && metadata.sources && (
         <View style={styles.searchResultsContainer}>
-          <Text style={[styles.searchResultsTitle, { color: theme === 'dark' ? '#a8d8ff' : '#0066cc' }]}>
+          <Text style={[styles.searchResultsTitle, { color: theme === 'dark' ? '#a8d8ff' : '#8fc7ffff' }]}>
             🔍 Search Results for "{metadata.query}"
           </Text>
           {metadata.sources.map((source: any, index: number) => (
@@ -187,7 +162,7 @@ const StreamContent: React.FC<{
         <View style={styles.toolCallsContainer}>
           {metadata.toolCalls.map((toolCall: ToolCall, index: number) => (
             <View key={toolCall.id || index} style={styles.toolCallCard}>
-              <Text style={[styles.toolCallName, { color: theme === 'dark' ? '#a8d8ff' : '#0066cc' }]}>
+              <Text style={[styles.toolCallName, { color: theme === 'dark' ? '#a8d8ff' : '#add6ffff' }]}>
                 🔧 {toolCall.name.replace(/_/g, ' ')}
               </Text>
               {toolCall.status === 'completed' && toolCall.result && (
@@ -206,11 +181,9 @@ const StreamContent: React.FC<{
 const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = memo(({
   message,
   index,
-  onLongPress,
   onSpeakMessage,
   theme = 'light',
   messageIndex = 0,
-  colorfulBubblesEnabled = false,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -221,26 +194,49 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = memo(({
   const isStreaming = message.variant === 'streaming';
 
   // Action handlers
-  const handleLongPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onLongPress?.(message);
-  }, [onLongPress, message]);
-
   const handleCopyMessage = useCallback(async () => {
-    if (message.text) {
-      await Clipboard.setStringAsync(message.text);
+    const textToCopy = message.text || message.message;
+    if (textToCopy) {
+      await Clipboard.setStringAsync(textToCopy);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-  }, [message.text]);
+  }, [message.text, message.message]);
 
   const handleShare = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Implement share functionality
   }, []);
+
+  // Render photo attachments using the working PhotoPreview component
+  const renderPhotoAttachments = useCallback(() => {
+    if (!message.attachments || message.attachments.length === 0) return null;
+
+    const imageAttachments = message.attachments.filter(att => att.type === 'image');
+    if (imageAttachments.length === 0) return null;
+
+    const isUser = message.sender === 'user';
+
+    return (
+      <View style={isUser ? styles.photoAttachmentsContainer : styles.aiPhotoAttachmentsContainer}>
+        {imageAttachments.map((attachment) => (
+          <PhotoPreview
+            key={attachment.id}
+            attachment={attachment}
+            isUser={isUser}
+            onPress={() => handleImagePress(attachment)}
+          />
+        ))}
+      </View>
+    );
+  }, [message.attachments, message.sender]);
 
   const handleReport = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Implement report functionality
+  }, []);
+
+  const handleImagePress = useCallback((attachment: MessageAttachment) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('Image pressed:', attachment.uri);
+    // TODO: Open full-screen image viewer
   }, []);
 
   // Format timestamp for display
@@ -261,7 +257,7 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = memo(({
   }, []);
 
   // Show timestamp and actions for completed messages
-  const showTimestampAndActions = !isStreaming && message.text?.trim();
+  const showTimestampAndActions = !isStreaming && (message.text?.trim() || message.message?.trim() || (message.attachments && message.attachments.length > 0));
 
   // Animation on mount
   useEffect(() => {
@@ -297,161 +293,114 @@ const EnhancedBubble: React.FC<AnimatedMessageBubbleProps> = memo(({
         },
       ]}
     >
-      <TouchableOpacity
-        onLongPress={handleLongPress}
-        activeOpacity={0.7}
-        disabled={isSystem}
-      >
+      <View>
         {isUser ? (
           // User messages
           <View style={styles.userMessageContainer}>
-            {message.text?.trim() && (
-              <View>
-                <Animated.View style={[
-                  styles.userProfileBubble,
-                  getStandardBorder(theme as 'light' | 'dark'),
-                  {
-                    backgroundColor: getUserMessageColor(messageIndex, theme, colorfulBubblesEnabled),
-                  }
-                ]}>
-                  <Text 
-                    style={[
-                      styles.messageText,
-                      {
-                        fontSize: 18,
-                        lineHeight: 26,
-                        letterSpacing: -0.1,
-                        fontFamily: 'Nunito-Regular',
-                        fontWeight: '400',
-                        color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
-                        textAlign: 'left',
-                      }
-                    ]}
-                    numberOfLines={0}
-                    ellipsizeMode="tail"
-                  >
-                    {message.text}
-                  </Text>
-                </Animated.View>
-                {showTimestampAndActions && (
-                  <View style={styles.messageFooter}>
-                    <Text style={[styles.timestamp, { color: theme === 'dark' ? '#888888' : '#666666' }]}>
-                      {formatTimestamp(message.timestamp)}
-                    </Text>
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity 
-                        onPress={handleCopyMessage}
-                        style={styles.actionButton}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons 
-                          name="copy-outline" 
-                          size={14} 
-                          color={theme === 'dark' ? '#888888' : '#666666'} 
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        onPress={handleShare}
-                        style={styles.actionButton}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons 
-                          name="ellipsis-horizontal" 
-                          size={14} 
-                          color={theme === 'dark' ? '#888888' : '#666666'} 
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
+            {/* Render photo attachments first */}
+            {renderPhotoAttachments()}
+            {(message.text?.trim() || message.message?.trim()) && (
+              <Animated.View style={[
+                styles.userProfileBubble,
+                getStandardBorder(theme as 'light' | 'dark'),
+                {
+                  backgroundColor: theme === 'light' ? '#FF0000' : '#202020',
+                }
+              ]}>
+                <Text 
+                  style={[
+                    styles.messageText,
+                    {
+                      fontSize: 16,
+                      lineHeight: 22,
+                      letterSpacing: -0.1,
+                      fontFamily: 'Nunito-Regular',
+                      fontWeight: '400',
+                      color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
+                      textAlign: 'left',
+                    }
+                  ]}
+                  numberOfLines={0}
+                  ellipsizeMode="tail"
+                >
+                  {message.text || message.message}
+                </Text>
+              </Animated.View>
             )}
           </View>
         ) : (
           // Bot messages - no bubble, just animated text
           <View style={styles.botTextWrapper}>
             <StreamContent 
-              text={message.text}
+              text={message.text || message.message}
               theme={theme}
               messageId={message.id}
               isStreaming={isStreaming}
               metadata={message.metadata}
             />
             {showTimestampAndActions && (
-              <View style={[styles.messageFooter, styles.botMessageFooter]}>
+              <View style={styles.botMessageFooter}>
+                <TouchableOpacity 
+                  onPress={handleCopyMessage}
+                  style={styles.actionButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons 
+                    name="copy-outline" 
+                    size={14} 
+                    color={theme === 'dark' ? '#888888' : '#666666'} 
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={handleReport}
+                  style={styles.actionButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons 
+                    name="ellipsis-horizontal" 
+                    size={14} 
+                    color={theme === 'dark' ? '#888888' : '#666666'} 
+                  />
+                </TouchableOpacity>
                 <Text style={[styles.timestamp, { color: theme === 'dark' ? '#888888' : '#666666' }]}>
                   {formatTimestamp(message.timestamp)}
                 </Text>
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    onPress={handleCopyMessage}
-                    style={styles.actionButton}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons 
-                      name="copy-outline" 
-                      size={14} 
-                      color={theme === 'dark' ? '#888888' : '#666666'} 
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={handleReport}
-                    style={styles.actionButton}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons 
-                      name="ellipsis-horizontal" 
-                      size={14} 
-                      color={theme === 'dark' ? '#888888' : '#666666'} 
-                    />
-                  </TouchableOpacity>
-                </View>
               </View>
             )}
           </View>
         )}
-      </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 });
 
 const styles = StyleSheet.create({
   messageContainer: {
-    marginVertical: spacing[1],
-    width: '100%', // Full width instead of maxWidth constraint
-    flexShrink: 0, // Prevent shrinking
+    marginBottom: 0,
+    width: '100%',
   },
   userMessageContainer: {
     alignItems: 'flex-end',
-    gap: spacing[1] / 4,
     width: '100%',
-    overflow: 'visible',
-    flexShrink: 0, // Prevent container shrinking
   },
   userProfileBubble: {
-    borderRadius: 12,
-    paddingHorizontal: spacing[2] + 2,
-    paddingVertical: spacing[1] + 2,
-    marginVertical: spacing[1] / 2,
-    maxWidth: width * 0.75, // Slightly smaller to ensure proper wrapping
-    minWidth: 50,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    maxWidth: width * 0.8,
     alignSelf: 'flex-end',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    flexShrink: 1, // Allow shrinking to fit content properly
-    overflow: 'hidden', // Prevent text overflow
   },
   userMessageText: {
-    ...typography.textStyles.body,
+    fontSize: 16,
+    lineHeight: 20,
   },
   botTextWrapper: {
-    marginTop: spacing[1] / 2,
-    marginBottom: spacing[2], // Extra bottom margin to push user messages lower
-    paddingHorizontal: spacing[1] / 2,
-    maxWidth: width * 0.95, // Stretch much further right
+    maxWidth: width * 0.95,
     alignSelf: 'flex-start',
   },
   botTextContainer: {
@@ -528,9 +477,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   botMessageFooter: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: spacing[1],
-    marginTop: spacing[2],
+    marginTop: 0,
+    marginBottom: 0,
   },
   timestamp: {
     fontSize: 11,
@@ -548,6 +498,16 @@ const styles = StyleSheet.create({
     padding: spacing[1] / 2,
     borderRadius: 12,
     backgroundColor: 'transparent',
+  },
+  // Photo attachment containers
+  photoAttachmentsContainer: {
+    gap: 6,
+    alignItems: 'flex-end',
+  },
+  aiPhotoAttachmentsContainer: {
+    gap: 6,
+    alignItems: 'flex-start',
+    marginBottom: spacing[2],
   },
 });
 

@@ -30,7 +30,9 @@ const SETTINGS_KEYS = {
   AUTOLOCK: '@numina_auto_lock',
   AUTOLOCKTIMEOUT: '@numina_auto_lock_timeout',
   // Background
-  PLAINWHITEBACKGROUND: '@numina_plain_white_background',
+  BACKGROUNDTYPE: '@numina_background_type',
+  // Dynamic Options
+  DYNAMICOPTIONS: '@numina_dynamic_options',
 } as const;
 
 // Default Settings
@@ -58,7 +60,9 @@ export const DEFAULT_SETTINGS = {
   autoLock: true,
   autoLockTimeout: 300, // 5 minutes in seconds
   // Background
-  plainWhiteBackground: false,
+  backgroundType: 'blue' as 'blue' | 'white',
+  // Dynamic Options
+  dynamicOptions: false,
 };
 
 export type SettingsKey = keyof typeof DEFAULT_SETTINGS;
